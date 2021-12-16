@@ -1425,7 +1425,7 @@ public class ProjectService {
 							if(ccsl1.contains("_") && ccsl2.contains("_")) {
 								if(ccsl1.contains(forbidStrs[0] + "_11") && ccsl2.contains(forbidStrs[1] + "_12")){
 									exclude1 = forbidStrs[0] +"_11#" + forbidStrs[1] + "_12";
-									break loop;
+//									break loop;
 								}
 								if(ccsl1.contains(forbidStrs[0] + "_12") && ccsl2.contains(forbidStrs[1] + "_11")) {
 									exclude2 = forbidStrs[0] +"_12#" + forbidStrs[1] + "_11";
@@ -1434,7 +1434,7 @@ public class ProjectService {
 							} else {
 								if(ccsl1.contains(forbidStrs[0] + "1") && ccsl2.contains(forbidStrs[1] + "2")){
 									exclude1 = forbidStrs[0] +"1#" + forbidStrs[1] + "2";
-									break loop;
+//									break loop;
 								}
 								if(ccsl1.contains(forbidStrs[0] + "2") && ccsl2.contains(forbidStrs[1] + "1")) {
 									exclude2 = forbidStrs[0] +"2#" + forbidStrs[1] + "1";
@@ -1590,7 +1590,7 @@ public class ProjectService {
 		return "";
 	}
 	
-	// 时钟图的简化
+	// 不一致场景的编排
 	public CCSLSet CCSLOrchestrate(String userAdd, Project project) {
 		List<String> simplifiedCCSLList = project.getSimplifiedCcslSet().getCcslList();
 		List<String> ccslListTmp = copyList(simplifiedCCSLList);
@@ -1605,9 +1605,10 @@ public class ProjectService {
 						if(ccsl1.contains("_") && ccsl2.contains("_")) {
 							if(ccsl1.contains(forbidStrs[0] + "_11") && ccsl2.contains(forbidStrs[1] + "_12")){
 								ccslListTmp.add(forbidStrs[0] +"_11=" + forbidStrs[1] + "_12");
+								ccslListTmp.remove(forbidStrs[0] +"_12=" + forbidStrs[1] + "_11");
 								String testStr1 = forbidStrs[0] + "_11<" + forbidStrs[0] + "_12";
 								ccslListTmp.add(testStr1);
-								List<List<String>> ccslCycles = getPath(ccslListTmp, "B", "E");
+								List<List<String>> ccslCycles = getCycles(ccslListTmp, "B", "E");
 								if(ccslCycles.size() > 3) {
 									ccslListTmp.remove(testStr1);
 									testStr1 = forbidStrs[0] + "_12<" + forbidStrs[0] + "_11";
@@ -1615,7 +1616,7 @@ public class ProjectService {
 								}
 								String testStr2 = forbidStrs[1] + "_11<" + forbidStrs[1] + "_12";
 								ccslListTmp.add(testStr2);
-								List<List<String>> ccslCycles2 = getPath(ccslListTmp, "B", "E");
+								List<List<String>> ccslCycles2 = getCycles(ccslListTmp, "B", "E");
 								if(ccslCycles2.size() > 3) {
 									ccslListTmp.remove(testStr2);
 									testStr2 = forbidStrs[1] + "_12<" + forbidStrs[1] + "_11";
@@ -1627,10 +1628,12 @@ public class ProjectService {
 							if(ccsl1.contains(forbidStrs[0] + "1") && ccsl2.contains(forbidStrs[1] + "2")){
 								// 1. 添加一个同步关系
 								ccslListTmp.add(forbidStrs[0] +"1=" + forbidStrs[1] + "2");
-								// 2. 为子时钟之间添加先于关系
+								// 2. 删除另一个exclude关系
+								ccslListTmp.remove(forbidStrs[0] +"2#" + forbidStrs[1] + "1");
+								// 3. 为子时钟之间添加先于关系
 								String testStr1 = forbidStrs[0] + "1<" + forbidStrs[0] + "2";
 								ccslListTmp.add(testStr1);
-								List<List<String>> ccslCycles = getPath(ccslListTmp, "B", "E");
+								List<List<String>> ccslCycles = getCycles(ccslListTmp, "B", "E");
 //								如果存在环路则添加反向的先于关系
 								if(ccslCycles.size() > 3) {
 									ccslListTmp.remove(testStr1);
@@ -1639,7 +1642,7 @@ public class ProjectService {
 								}
 								String testStr2 = forbidStrs[1] + "1<" + forbidStrs[1] + "2";
 								ccslListTmp.add(testStr2);
-								List<List<String>> ccslCycles2 = getPath(ccslListTmp, "B", "E");
+								List<List<String>> ccslCycles2 = getCycles(ccslListTmp, "B", "E");
 								if(ccslCycles2.size() > 3) {
 									ccslListTmp.remove(testStr2);
 									testStr2 = forbidStrs[1] + "2<" + forbidStrs[1] + "1";
@@ -1648,9 +1651,10 @@ public class ProjectService {
 								break loop;
 							} else if(ccsl1.contains(forbidStrs[0] + "2") && ccsl2.contains(forbidStrs[1] + "1")) {
 								ccslListTmp.add(forbidStrs[0] +"2=" + forbidStrs[1] + "1");
+								ccslListTmp.remove(forbidStrs[0] +"1#" + forbidStrs[1] + "2");
 								String testStr1 = forbidStrs[0] + "1<" + forbidStrs[0] + "2";
 								ccslListTmp.add(testStr1);
-								List<List<String>> ccslCycles = getPath(ccslListTmp, "B", "E");
+								List<List<String>> ccslCycles = getCycles(ccslListTmp, "B", "E");
 								if(ccslCycles.size() > 3) {
 									ccslListTmp.remove(testStr1);
 									testStr1 = forbidStrs[0] + "2<" + forbidStrs[0] + "1";
@@ -1658,7 +1662,7 @@ public class ProjectService {
 								}
 								String testStr2 = forbidStrs[1] + "1<" + forbidStrs[1] + "2";
 								ccslListTmp.add(testStr2);
-								List<List<String>> ccslCycles2 = getPath(ccslListTmp, "B", "E");
+								List<List<String>> ccslCycles2 = getCycles(ccslListTmp, "B", "E");
 								if(ccslCycles2.size() > 3) {
 									ccslListTmp.remove(testStr2);
 									testStr2 = forbidStrs[1] + "2<" + forbidStrs[1] + "1";
@@ -1680,10 +1684,28 @@ public class ProjectService {
 		DosService.executeCommand(addressPng, addressPng + "OrchestratedCG");
 		return orchestratedCCSLSet;
 	}
+	
+    //不一致场景的可视化
+	public VisualizedScenario visualizeScenario(String userAdd, Project project) {
+		List<String> simplifiedCCSLList = project.getSimplifiedCcslSet().getCcslList();
+		// 1. 根据简化时钟图获得所有路径
+		List<List<String>> ccslPaths = getPath(simplifiedCCSLList, "B", "E");
+		return null;
+	}
 
-	private List<List<String>> getPath(List<String> composedCCSLListTmp, String startStr, String endStr) {
+	private List<List<String>> getCycles(List<String> composedCCSLListTmp, String startStr, String endStr) {
+		List<DirectedLine> directedLineList = getDirectedLineList(composedCCSLListTmp);
+		// 当前路径
+		List<String> nowPath = new ArrayList<>();
+		// 所有环路
+		List<List<String>> cyclePaths = new ArrayList<List<String>>();
+		cyclePaths = findAllCycles(directedLineList, startStr, endStr, nowPath, cyclePaths);
+		return cyclePaths;
+	}
+	
+	private List<DirectedLine> getDirectedLineList(List<String> CCSLList) {
 		List<DirectedLine> directedLineList = new ArrayList<>();
-		for(String ccsl: composedCCSLListTmp) {
+		for(String ccsl: CCSLList) {
 			if(ccsl.contains("<")) {
 				String leftStr = ccsl.split("<")[0];
 				String rightStr = ccsl.split("<")[1];
@@ -1706,14 +1728,9 @@ public class ProjectService {
 				directedLineList.add(new DirectedLine(event2, event1));
 			}
 		}
-		// 当前路径
-		List<String> nowPath = new ArrayList<>();
-		// 所有环路
-		List<List<String>> cyclePaths = new ArrayList<List<String>>();
-		cyclePaths = findAllCycles(directedLineList, startStr, endStr, nowPath, cyclePaths);
-		return cyclePaths;
+		return directedLineList;
 	}
-	
+
 	private List<List<String>> findAllCycles(List<DirectedLine> directedLineList, String startName, String endName,
 			List<String> nowPath, List<List<String>> cyclePaths) {
 		if(nowPath.contains(startName)){
@@ -1747,7 +1764,65 @@ public class ProjectService {
         }
 		return cyclePaths;
 	}
+	
+	private List<List<String>> getPath(List<String> composedCCSLListTmp, String startStr, String endStr) {
+		List<DirectedLine> directedLineList = getDirectedLineList(composedCCSLListTmp);
+		// 当前路径
+		List<String> nowPath = new ArrayList<>();
+		// 所有环路
+		List<List<String>> allPaths = new ArrayList<List<String>>();
+		allPaths = findAllPath(directedLineList, startStr, endStr, nowPath, allPaths);
+		return allPaths;
+	}
+	
+	private List<List<String>> findAllPath(List<DirectedLine> directedLineList, String startName, String endName,
+			List<String> nowPath, List<List<String>> allPath) {
+		List<String> newPath = new ArrayList<>();
+		if(nowPath.contains(startName)){
+            System.out.println("这是一个环：:" + nowPath);
+            List<String> cyclePath = copyList(nowPath);
+            String str1 = cyclePath.get(0);
+            String str2 = cyclePath.get(1);
+            cyclePath.add(str1);
+            cyclePath.add(str2);
+            allPath.add(cyclePath);
+            nowPath.remove(nowPath.size() - 1);
+            return null;
+        }
+		
+        for(int i = 0; i < directedLineList.size(); i++){
+        	DirectedLine line = directedLineList.get(i);
+            if(line.getSource().equals(startName)){
+                nowPath.add(line.getSource());
+                if(line.getTarget().equals(endName)){
+                    nowPath.add(line.getTarget());
+                    System.out.println("这是一条路径：:" + nowPath);
+                    newPath = copyPath(newPath, nowPath);
+                    allPath.add(newPath);
+                    // 因为添加了终点路径,所以要返回两次
+                    nowPath.remove(nowPath.size() - 1);
+                    nowPath.remove(nowPath.size() - 1);
+                    // 已经找到路径,返回上层找其他路径
+                    continue;
+                }
+                findAllPath(directedLineList, line.getTarget(), endName, nowPath, allPath);
+            }
+        }
+        // 如果找不到下个节点,返回上层
+        if(nowPath.size() > 0){
+            nowPath.remove(nowPath.size() - 1);
+        }
+		return allPath;
+	}
 
+	private List<String> copyPath(List<String> newPath, List<String> nowPath) {
+		for(int i = 0; i < nowPath.size(); i++) {
+			String element = nowPath.get(i);
+			newPath.add(element);
+		}
+		return newPath;
+	}
+	
 	private List<String> copyList(List<String> ccslListTmp) {
 		List<String> newList = new ArrayList<String>();
 		for(String ccsl: ccslListTmp) {
@@ -1942,10 +2017,6 @@ public class ProjectService {
 		}
 	}
 
-	//	可视化
-	public VisualizedScenario visualizeScenario(String userAdd, Project project) {
-		// TODO Auto-generated method stub
-		return null;
-	}
+	
 
 }
