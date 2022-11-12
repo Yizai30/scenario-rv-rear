@@ -16,7 +16,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.example.demo.bean.Ontology;
 import com.example.demo.bean.Project;
-import com.example.demo.service.AddressService;
+import com.example.demo.util.ScenarioRVConstants;
 import com.example.demo.service.FileService;
 
 @RestController
@@ -28,8 +28,8 @@ public class FileController {
 	
 	private float time;
 	
-	private String rootAddress = AddressService.rootAddress;
-	private String userAddress = AddressService.userAddress;
+	private String rootAddress = ScenarioRVConstants.rootAddress;
+	private String userAddress = ScenarioRVConstants.userAddress;
 	
 	@RequestMapping(value = "/searchProject", method = RequestMethod.GET)
 	@ResponseBody
@@ -116,10 +116,11 @@ public class FileController {
 	
 	public String getUserAdd(String username) {
 		String userAdd;
-		if (username == null || username == "")
+		if (username == null || username == "") {
 			userAdd = rootAddress;
-		else
+		} else {
 			userAdd = userAddress + username + "/";
+		}
 		return userAdd;
 	}
 

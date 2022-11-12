@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.example.demo.bean.CCSLSet;
 import com.example.demo.bean.Project;
 import com.example.demo.bean.VisualizedScenario;
-import com.example.demo.service.AddressService;
+import com.example.demo.util.ScenarioRVConstants;
 import com.example.demo.service.DosService;
 import com.example.demo.service.ProjectService;
 
@@ -29,8 +29,8 @@ public class ProjectController {
 	ProjectService projectService;
 	private float time;
 	
-	private String rootAddress = AddressService.rootAddress;
-	private String userAddress = AddressService.userAddress;
+	private String rootAddress = ScenarioRVConstants.rootAddress;
+	private String userAddress = ScenarioRVConstants.userAddress;
 	
 	@RequestMapping(value = "/sdToCCSL", method = RequestMethod.POST)
 	@ResponseBody

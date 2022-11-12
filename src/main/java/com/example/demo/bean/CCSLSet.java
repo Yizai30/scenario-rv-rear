@@ -1,45 +1,26 @@
 package com.example.demo.bean;
 
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
 import java.util.List;
 
+/**
+ * CCSL 语句组的集合
+ */
+@AllArgsConstructor
+@NoArgsConstructor
+@Data
 public class CCSLSet {
-	private String id;
-	private List<String> ccslList;
-	private String begin;
-	private String end;
-	
-	public CCSLSet(String id, List<String> ccslList, String begin, String end) {
-		this.id = id;
-		this.ccslList = ccslList;
-		this.begin = begin;
-		this.end = end;
-	}
-	public CCSLSet() {
-		super();
-	}
-	public String getId() {
-		return id;
-	}
-	public void setId(String id) {
-		this.id = id;
-	}
-	public List<String> getCcslList() {
-		return ccslList;
-	}
-	public void setCcslList(List<String> ccslList) {
-		this.ccslList = ccslList;
-	}
-	public String getBegin() {
-		return begin;
-	}
-	public void setBegin(String begin) {
-		this.begin = begin;
-	}
-	public String getEnd() {
-		return end;
-	}
-	public void setEnd(String end) {
-		this.end = end;
-	}
-	
+    /**
+     * 编号
+     */
+    private String id;
+    /**
+     * CCSL 语句组
+     */
+    private List<String> ccslList;
+    private String begin;
+    private String end;
 }

@@ -11,6 +11,9 @@ import java.util.Stack;
 
 import javax.servlet.http.HttpServletResponse;
 
+import com.example.demo.util.GitUtil;
+import com.example.demo.util.ScenarioRVConstants;
+import lombok.extern.slf4j.Slf4j;
 import org.dom4j.Document;
 import org.dom4j.DocumentException;
 import org.dom4j.Element;
@@ -36,12 +39,16 @@ import com.example.demo.bean.VisualizedScenario;
 import java.util.HashMap;
 import java.util.Map;
 
+import static com.example.demo.util.ScenarioRVConstants.*;
+
 @Service
+@Slf4j
 public class ProjectService {
 	@Autowired	//自动装配
 	FileService fileService;
 	public static Stack<String> stack = new Stack<String>();
-	
+
+	// 情景图到 CCSL 的转换
 	public List<CCSLSet> sdToCCSL(String userAdd, Project project) {
 		List<CCSLSet> ccslset = new ArrayList<CCSLSet>();
 		List<ScenarioGraph> scenarioGraphs = project.getScenarioGraphList();
@@ -50,8 +57,11 @@ public class ProjectService {
 		
 		for(ScenarioGraph scenarioGraph: scenarioGraphs) {
 			List<String> ccslList = new ArrayList<String>();
+			// pheMap 将控制节点映射到事件，用来记录控制节点，并通过其 pheValue 作为 value 与 unionMap 中的 key 组成键值对
 			Map<String, String> pheMap = new HashMap<String, String>();
+			// 控制节点即 选择、分支、合并等 节点，它们与多个事件节点相连，通过 unionMap 存储与控制节点相连的节点
 			Map<String, String> unionMap = new HashMap<String, String>();
+			// 从 scenarioGraph 中获取图的信息，进而进行 CCSL 的转化
 			List<Line> lineList =  scenarioGraph.getLineList();
 			List<CtrlNode> ctrlNodes = scenarioGraph.getCtrlNodeList();
 			List<String> ccslCycles = new ArrayList<String>();
@@ -77,14 +87,15 @@ public class ProjectService {
 					if((from_node_type.equals("BehInt") || from_node_type.equals("ConnInt") || from_node_type.equals("ExpInt")) &&
 							(to_node_type.equals("BehInt") || to_node_type.equals("ConnInt") || to_node_type.equals("ExpInt"))) {
 						// state to phe
-						if(from_node_name.contains("+(state)") && !to_node_name.contains("+(state)")) {
+						if(from_node_name.contains(TAG_STATE) && !to_node_name.contains(TAG_STATE)) {
+//							log.info(from_node_name);
 							for(int j = 0; j < ccslCycles.size() - 1; j++) {
 								String ccsl1 = ccslCycles.get(j), ccsl2 = ccslCycles.get(j + 1);
 								if(from_node_name.equals(ccsl1) && to_node_name.equals(ccsl2)) {
 									continue loop;
 								}
 							}
-							String state_name = from_node_name.split("\\+")[0];
+							String state_name = from_node_name.split(TAG_STATE_REGEX)[0];
 							String state_ccsl = state_name + ".s<" + state_name + ".f";
 							if(!ccslList.contains(state_ccsl)) {
 								ccslList.add(state_ccsl);
@@ -95,37 +106,38 @@ public class ProjectService {
 								ccslList.add(state_name + ".f<" + to_node_name);
 							}
 						// phe to state
-						} else if(!from_node_name.contains("+(state)") && to_node_name.contains("+(state)")) {
+						} else if(!from_node_name.contains(TAG_STATE) && to_node_name.contains(TAG_STATE)) {
+//							log.info(from_node_name + " -> " + to_node_name);
 							for(int j = 0; j < ccslCycles.size() - 1; j++) {
 								String ccsl1 = ccslCycles.get(j), ccsl2 = ccslCycles.get(j + 1);
 								if(from_node_name.equals(ccsl1) && to_node_name.equals(ccsl2)) {
 									continue loop;
 								}
 							}
-							String state_name = to_node_name.split("\\+")[0];
+							String state_name = to_node_name.split(TAG_STATE_REGEX)[0];
 							if(!cycleString.equals("") && cycleString.equals(from_node_name)) {
 								ccslList.add(cycleString + "_4<" + state_name + ".s");
 							} else {
-								ccslList.add(from_node_name + "<" + state_name + ".s");
+								ccslList.add(from_node_name + STRICT_PRE + state_name + ".s");
 							}
 							String state_ccsl = state_name + ".s<" + state_name + ".f";
 							if(!ccslList.contains(state_ccsl)) {
 								ccslList.add(state_ccsl);
 							}
 						// state to state
-						} else if(!from_node_name.contains("+(state)") && to_node_name.contains("+(state)")) {
+						} else if(!from_node_name.contains(TAG_STATE) && to_node_name.contains(TAG_STATE)) {
 							for(int j = 0; j < ccslCycles.size() - 1; j++) {
 								String ccsl1 = ccslCycles.get(j), ccsl2 = ccslCycles.get(j + 1);
 								if(from_node_name.equals(ccsl1) && to_node_name.equals(ccsl2)) {
 									continue loop;
 								}
 							}
-							String state_name1 = from_node_name.split("\\+")[0];
+							String state_name1 = from_node_name.split(TAG_STATE_REGEX)[0];
 							String state_ccsl1 = state_name1 + ".s<" + state_name1 + ".f";
 							if(!ccslList.contains(state_ccsl1)) {
 								ccslList.add(state_ccsl1);
 							}
-							String state_name2 = to_node_name.split("\\+")[0];
+							String state_name2 = to_node_name.split(TAG_STATE_REGEX)[0];
 							if(!cycleString.equals("") && cycleString.equals(from_node_name)) {
 								ccslList.add(state_name1 + ".f<" + state_name2 + "4.s");
 							} else {
@@ -146,7 +158,7 @@ public class ProjectService {
 							if(!cycleString.equals("") && cycleString.equals(from_node_name)) {
 								ccslList.add(cycleString + "_4<" + to_node_name);
 							} else {
-								ccslList.add(from_node_name + "<" + to_node_name);
+								ccslList.add(from_node_name + STRICT_PRE + to_node_name);
 							}
 						}
 					// ctrlNode to phe
@@ -170,10 +182,12 @@ public class ProjectService {
 							} else {
 								pheValue = pheMap.get(pheKey);
 							}
-							
+
+							// unionMap.put(unionStr, pheValue);
+							// 将所有与该控制节点相连的节点添加到 unionList 中
 							if(!unionMap.containsValue(pheValue)) {
-								if(to_node_name.contains("+(state)")) {
-									String state_name = to_node_name.split("\\+")[0];
+								if(to_node_name.contains(TAG_STATE)) {
+									String state_name = to_node_name.split(TAG_STATE_REGEX)[0];
 									unionList.add(state_name + ".s");
 								} else {
 									unionList.add(to_node_name);
@@ -188,12 +202,13 @@ public class ProjectService {
 										if((temp_from_node_type.equals("Decision") && from_node.getNode_no() == temp_from_node.getNode_no()) ||
 												(temp_from_node_type.equals("Merge") && from_node.getNode_no() == temp_from_node.getNode_no()) ||
 												(temp_from_node_type.equals("Branch") && from_node.getNode_no() == temp_from_node.getNode_no())) {
-											if(temp_to_node_name.contains("+(state)")) {
-												String state_name = temp_to_node_name.split("\\+")[0];
+											if(temp_to_node_name.contains(TAG_STATE)) {
+												String state_name = temp_to_node_name.split(TAG_STATE_REGEX)[0];
 												unionList.add(state_name + ".s");
 											} else {
 												unionList.add(temp_to_node_name);
 											}
+											// Decision 节点只能有两个分支现象
 											if(temp_from_node_type.equals("Decision")) {
 												break;
 											}
@@ -209,7 +224,7 @@ public class ProjectService {
 										if(m == 0) {
 											unionStr += decision;
 										} else {
-											unionStr += "+" + decision;
+											unionStr += TO_CCSL_HYPHEN + decision;
 										}
 										
 									}
@@ -217,28 +232,30 @@ public class ProjectService {
 										ccslList.add(pheValue + "=" + unionStr);
 									} else if(from_node_name.equals("Decision")) {
 										ccslList.add(pheValue + "=" + unionStr);
-										unionStr = unionStr.replace("+", "#");
+										unionStr = unionStr.replace(TO_CCSL_HYPHEN, "#");
 										ccslList.add(unionStr);
 									} else if(from_node_name.equals("Merge")) {
-										unionStr = unionStr.replace("+", "˄");
+										unionStr = unionStr.replace(TO_CCSL_HYPHEN, "˄");
 										ccslList.add(pheValue + "=" + unionStr);
 									}
 									unionMap.put(unionStr, pheValue);
 								} 
 							} else {
 								String unionKey = getKey(unionMap, pheValue);
-//								if(to_node_name.contains("+(state)")) {
-//									String stateName = to_node_name.split("\\+")[0];
+//								if(to_node_name.contains(TAG_STATE)) {
+//									String stateName = to_node_name.split(TAG_STATE_REGEX)[0];
 //									String state_ccsl = to_node_name + ".s<" + to_node_name + ".f";
 //									if(!ccslList.contains(state_ccsl)) {
 //										ccslList.add(state_ccsl);
 //									}
 //								}
 								if(!unionKey.contains(to_node_name)) {
-//									ccslList.add(pheValue + "<" + to_node_name);
-									if(to_node_name.contains("+(state)")) {
-										to_node_name = to_node_name.split("\\+")[0];
+//									ccslList.add(pheValue + STRICT_PRE + to_node_name);
+									if(to_node_name.contains(TAG_STATE)) {
+										to_node_name = to_node_name.split(TAG_STATE_REGEX)[0];
+										// 状态的对应的开始事件节点和其它节点取下确界约束 why？
 										String unionStr = unionKey + "˄" + to_node_name + ".s";
+										// 是否需要去重？因为已经包含 pheValue 了
 										ccslList.add(pheValue + "=" + unionStr);
 										unionMap.put(unionStr, pheValue);
 										String state_ccsl = to_node_name + ".s<" + to_node_name + ".f";
@@ -246,7 +263,7 @@ public class ProjectService {
 											ccslList.add(state_ccsl);
 										}
 									} else {
-										ccslList.add(pheValue + "<" + to_node_name);
+										ccslList.add(pheValue + STRICT_PRE + to_node_name);
 									}
 								} 
 							}
@@ -255,8 +272,9 @@ public class ProjectService {
 					} else if((from_node_type.equals("BehInt") || from_node_type.equals("ConnInt") || from_node_type.equals("ExpInt")) &&
 							!(to_node_type.equals("BehInt") || to_node_type.equals("ConnInt") || to_node_type.equals("ExpInt"))){
 						if(to_node_name.equals("End")) {
-							if(from_node_name.contains("+(state)")) {
-								String state_name = from_node_name.split("\\+")[0];
+							if(from_node_name.contains(TAG_STATE)) {
+								String state_name = from_node_name.split(TAG_STATE_REGEX)[0];
+								// ccslCyclesCopy 是干啥用的？
 								if(!ccslCyclesCopy.contains(from_node_name)) {
 									String state_ccsl = state_name + ".s<" + state_name + ".f";
 									if(!ccslList.contains(state_ccsl)) {
@@ -284,7 +302,7 @@ public class ProjectService {
 							} else {
 								unionValue = pheMap.get(unionKey);
 							}
-							ccslList.add(from_node_name + "<" + unionValue);
+							ccslList.add(from_node_name + STRICT_PRE + unionValue);
 						} else if(to_node_name.equals("Merge") || to_node_name.equals("Branch")) {
 							for(int j = 0; j < ccslCycles.size() - 1; j++) {
 								String ccsl1 = ccslCycles.get(j), ccsl2 = ccslCycles.get(j + 1);
@@ -296,8 +314,8 @@ public class ProjectService {
 							String pheKey = to_node_name + to_node.getNode_no();
 							String pheValue = "phe" + pheNo;  
 							if(!pheMap.containsKey(pheKey)) {
-								if(from_node_name.contains("+(state)")) {
-									String state_name = from_node_name.split("\\+")[0];
+								if(from_node_name.contains(TAG_STATE)) {
+									String state_name = from_node_name.split(TAG_STATE_REGEX)[0];
 									unionList.add(state_name + ".f");
 //									String state_ccsl = state_name + ".s<" + state_name + ".f";
 //									if(!ccslList.contains(state_ccsl)) {
@@ -315,8 +333,8 @@ public class ProjectService {
 										String temp_to_node_type = temp_to_node.getNode_type();
 										if((temp_to_node_type.equals("Merge") && to_node.getNode_no() == temp_to_node.getNode_no()) ||
 												(temp_to_node_type.equals("Branch") && to_node.getNode_no() == temp_to_node.getNode_no())) {
-											if(temp_from_node_name.contains("+(state)")) {
-												String state_name = temp_from_node_name.split("\\+")[0];
+											if(temp_from_node_name.contains(TAG_STATE)) {
+												String state_name = temp_from_node_name.split(TAG_STATE_REGEX)[0];
 												unionList.add(state_name + ".f");
 //												String state_ccsl = state_name + ".s<" + state_name + ".f";
 //												if(!ccslList.contains(state_ccsl)) {
@@ -360,14 +378,14 @@ public class ProjectService {
 										if(from_node_name.equals("Start")) {
 											tempCCSL = "B<" + cycleStart + "_1";
 										} else {
-											tempCCSL = from_node_name + "<" + cycleStart + "_1";
+											tempCCSL = from_node_name + STRICT_PRE + cycleStart + "_1";
 										}
 										if(!ccslList.contains(tempCCSL)) {
 											ccslList.add(tempCCSL);
 										}
 										if(cycleStart.equals(cycleEnd)) {
 											for(int m = 1; m < 4; m++) {
-												String cycleCCSL = cycleStart + "_" + m + "<" + cycleStart + "_" + (m + 1);
+												String cycleCCSL = cycleStart + "_" + m + STRICT_PRE + cycleStart + "_" + (m + 1);
 												if(!ccslList.contains(cycleCCSL)) {
 													ccslList.add(cycleCCSL);
 												}
@@ -377,11 +395,11 @@ public class ProjectService {
 												String cycle1 = cycleStart;
 												for(int n = 2; n <= ccslCycles.size() - 2; n++) {
 													String cycle2 = ccslCycles.get(n);
-													String cycleCCSL = cycle1 + "_" + m + "<" + cycle2 + "_" + m;
+													String cycleCCSL = cycle1 + "_" + m + STRICT_PRE + cycle2 + "_" + m;
 													if(!ccslList.contains(cycleCCSL)) {
 														ccslList.add(cycleCCSL);
 													}
-													String cycleCCSL2 = cycle2 + "_" + m + "<" + cycle1 + "_" + (m + 1);
+													String cycleCCSL2 = cycle2 + "_" + m + STRICT_PRE + cycle1 + "_" + (m + 1);
 													if(!ccslList.contains(cycleCCSL2) && m != 4) {
 														ccslList.add(cycleCCSL2);
 													}
@@ -401,7 +419,7 @@ public class ProjectService {
 											if(m == 0) {
 												unionStr += decision;
 											} else {
-												unionStr += "+" + decision;
+												unionStr += TO_CCSL_HYPHEN + decision;
 											}
 										}
 										if(unionMap.containsKey(unionStr)) {
@@ -411,7 +429,7 @@ public class ProjectService {
 											if(to_node_type.equals("Branch")) {
 												ccslList.add(pheValue + "=" + unionStr);
 											} else if(to_node_name.equals("Merge")) {
-												unionStr = unionStr.replace("+", "˅");
+												unionStr = unionStr.replace(TO_CCSL_HYPHEN, "˅");
 												ccslList.add(pheValue + "=" + unionStr);
 											}
 											ccslList.add(pheValue + "=" + unionStr);
@@ -427,7 +445,7 @@ public class ProjectService {
 									} else {
 										pheValue = pheMap.get(pheKey);
 									}
-									ccslList.add(from_node_name + "<" + pheValue);
+									ccslList.add(from_node_name + STRICT_PRE + pheValue);
 								}
 							}
 						} else {
@@ -440,8 +458,8 @@ public class ProjectService {
 							String pheKey = to_node_name + to_node.getNode_no();
 							String pheValue = "phe" + pheNo;  
 							if(!pheMap.containsKey(pheKey)) {
-								if(from_node_name.contains("+(state)")) {
-									String state_name = from_node_name.split("\\+")[0];
+								if(from_node_name.contains(TAG_STATE)) {
+									String state_name = from_node_name.split(TAG_STATE_REGEX)[0];
 									unionList.add(state_name + ".f");
 //									String state_ccsl = state_name + ".s<" + state_name + ".f";
 //									if(!ccslList.contains(state_ccsl)) {
@@ -458,8 +476,8 @@ public class ProjectService {
 										Node temp_to_node = tempLine.getToNode();
 										String temp_to_node_type = temp_to_node.getNode_type();
 										if(temp_to_node_type.equals("Merge") && to_node.getNode_no() == temp_to_node.getNode_no()) {
-											if(temp_from_node_name.contains("+(state)")) {
-												String state_name = temp_from_node_name.split("\\+")[0];
+											if(temp_from_node_name.contains(TAG_STATE)) {
+												String state_name = temp_from_node_name.split(TAG_STATE_REGEX)[0];
 												unionList.add(state_name + ".f");
 //												String state_ccsl = state_name + ".s<" + state_name + ".f";
 //												if(!ccslList.contains(state_ccsl)) {
@@ -503,8 +521,8 @@ public class ProjectService {
 										if(from_node_name.equals("Start")) {
 											tempCCSL = "B<" + cycleStart + "_1";
 										} else if(from_node_name.equals("Merge")) {
-											if(cycleStart.contains("+(state)")) {
-												String state_name = cycleStart.split("\\+")[0];
+											if(cycleStart.contains(TAG_STATE)) {
+												String state_name = cycleStart.split(TAG_STATE_REGEX)[0];
 												unionStr = state_name + "1.s";
 //												String state_ccsl = state_name + "1.s<" + state_name + "1.f";
 //												if(!ccslList.contains(state_ccsl)) {
@@ -525,14 +543,14 @@ public class ProjectService {
 											}
 										}
 										else {
-											tempCCSL = from_node_name + "<" + cycleStart + "_1";
+											tempCCSL = from_node_name + STRICT_PRE + cycleStart + "_1";
 										}
 										if(!ccslList.contains(tempCCSL) && !tempCCSL.equals("")) {
 											ccslList.add(tempCCSL);
 										}
 										if(cycleStart.equals(cycleEnd)) {
 											for(int m = 1; m < 4; m++) {
-												String cycleCCSL = cycleStart + "_" + m + "<" + cycleStart + "_" + (m + 1);
+												String cycleCCSL = cycleStart + "_" + m + STRICT_PRE + cycleStart + "_" + (m + 1);
 												if(!ccslList.contains(cycleCCSL)) {
 													ccslList.add(cycleCCSL);
 												}
@@ -541,8 +559,8 @@ public class ProjectService {
 										} else {
 											for(int m = 1; m <= 4; m++) {
 												String cycle1 = cycleStart;
-												if(cycle1.contains("+(state)")) {
-													String stateName = cycle1.split("\\+")[0];
+												if(cycle1.contains(TAG_STATE)) {
+													String stateName = cycle1.split(TAG_STATE_REGEX)[0];
 													String stateStr = stateName + m +".s<" + stateName + m + ".f";
 													if(!ccslList.contains(stateStr)) {
 														ccslList.add(stateStr);
@@ -551,27 +569,27 @@ public class ProjectService {
 												for(int n = 2; n <= ccslCycles.size() - 2; n++) {
 													String cycle2 = ccslCycles.get(n);
 													String cycleCCSL = "";
-													if(cycle1.contains("+(state)") && !cycle2.contains("+(state)")) {
-														cycleCCSL = cycle1.split("\\+")[0] + ".f_" + m + "<" + cycle2 + "_" + m;
-													} else if(!cycle1.contains("+(state)") && cycle2.contains("+(state)")) {
-														cycleCCSL = cycle1 + "_" + m + "<" + cycle2.split("\\+")[0] + ".s" + "_" + m;
-													} else if(cycle1.contains("+(state)") && cycle2.contains("+(state)")) {
-														cycleCCSL = cycle1.split("\\+")[0] + ".f_" + m + "<" + cycle2.split("\\+")[0] + ".s" + "_" + m;
+													if(cycle1.contains(TAG_STATE) && !cycle2.contains(TAG_STATE)) {
+														cycleCCSL = cycle1.split(TAG_STATE_REGEX)[0] + ".f_" + m + STRICT_PRE + cycle2 + "_" + m;
+													} else if(!cycle1.contains(TAG_STATE) && cycle2.contains(TAG_STATE)) {
+														cycleCCSL = cycle1 + "_" + m + STRICT_PRE + cycle2.split(TAG_STATE_REGEX)[0] + ".s" + "_" + m;
+													} else if(cycle1.contains(TAG_STATE) && cycle2.contains(TAG_STATE)) {
+														cycleCCSL = cycle1.split(TAG_STATE_REGEX)[0] + ".f_" + m + STRICT_PRE + cycle2.split(TAG_STATE_REGEX)[0] + ".s" + "_" + m;
 													} else {
-														cycleCCSL = cycle1 + "_" + m + "<" + cycle2 + "_" + m;
+														cycleCCSL = cycle1 + "_" + m + STRICT_PRE + cycle2 + "_" + m;
 													} 
 													if(!ccslList.contains(cycleCCSL)) {
 														ccslList.add(cycleCCSL);
 													}
 													if(n == ccslCycles.size() - 2) {
-														if(cycleStart.contains("+(state)") && !cycle2.contains("+(state)")) {
-															cycleCCSL = cycle2 + "_" + m + "<" + cycleStart.split("\\+")[0] + ".s" + "_" + (m + 1);
-														} else if(!cycle1.contains("+(state)") && cycle2.contains("+(state)")) {
-															cycleCCSL = cycle2.split("\\+")[0] + ".f_" + m + "<" + cycleStart + "_" + (m + 1);
-														} else if(cycle1.contains("+(state)") && cycle2.contains("+(state)")) {
-															cycleCCSL = cycle2.split("\\+")[0] + ".f_" + m + "<" + cycleStart.split("\\+")[0] + ".s" + "_" + (m + 1);
+														if(cycleStart.contains(TAG_STATE) && !cycle2.contains(TAG_STATE)) {
+															cycleCCSL = cycle2 + "_" + m + STRICT_PRE + cycleStart.split(TAG_STATE_REGEX)[0] + ".s" + "_" + (m + 1);
+														} else if(!cycle1.contains(TAG_STATE) && cycle2.contains(TAG_STATE)) {
+															cycleCCSL = cycle2.split(TAG_STATE_REGEX)[0] + ".f_" + m + STRICT_PRE + cycleStart + "_" + (m + 1);
+														} else if(cycle1.contains(TAG_STATE) && cycle2.contains(TAG_STATE)) {
+															cycleCCSL = cycle2.split(TAG_STATE_REGEX)[0] + ".f_" + m + STRICT_PRE + cycleStart.split(TAG_STATE_REGEX)[0] + ".s" + "_" + (m + 1);
 														} else {
-															cycleCCSL = cycle2 + "_" + m + "<" + cycleStart + "_" + (m + 1);
+															cycleCCSL = cycle2 + "_" + m + STRICT_PRE + cycleStart + "_" + (m + 1);
 														} 
 														if(!ccslList.contains(cycleCCSL) && m != 4) {
 															ccslList.add(cycleCCSL);
@@ -590,7 +608,7 @@ public class ProjectService {
 											if(m == 0) {
 												unionStr += decision;
 											} else {
-												unionStr += "+" + decision;
+												unionStr += TO_CCSL_HYPHEN + decision;
 											}
 										}
 										if(unionMap.containsKey(unionStr)) {
@@ -613,7 +631,7 @@ public class ProjectService {
 									if(from_node_name.equals("Start")) {
 										ccslList.add("B<" + pheValue);
 									} else {
-										ccslList.add(from_node_name + "<" + pheValue);
+										ccslList.add(from_node_name + STRICT_PRE + pheValue);
 									}
 								}
 							}
@@ -622,8 +640,8 @@ public class ProjectService {
 							String pheKey = to_node_name + to_node.getNode_no();
 							String pheValue = "phe" + pheNo;  
 							if(!pheMap.containsKey(pheKey)) {
-								if(from_node_name.contains("+(state)")) {
-									String state_name = from_node_name.split("\\+")[0];
+								if(from_node_name.contains(TAG_STATE)) {
+									String state_name = from_node_name.split(TAG_STATE_REGEX)[0];
 									unionList.add(state_name + ".f");
 //									String state_ccsl = state_name + ".s<" + state_name + ".f";
 //									if(!ccslList.contains(state_ccsl)) {
@@ -640,8 +658,8 @@ public class ProjectService {
 										Node temp_to_node = tempLine.getToNode();
 										String temp_to_node_type = temp_to_node.getNode_type();
 										if(temp_to_node_type.equals("Branch") && to_node.getNode_no() == temp_to_node.getNode_no()) {
-											if(temp_from_node_name.contains("+(state)")) {
-												String state_name = temp_from_node_name.split("\\+")[0];
+											if(temp_from_node_name.contains(TAG_STATE)) {
+												String state_name = temp_from_node_name.split(TAG_STATE_REGEX)[0];
 												unionList.add(state_name + ".f");
 //												String state_ccsl = state_name + ".s<" + state_name + ".f";
 //												if(!ccslList.contains(state_ccsl)) {
@@ -663,7 +681,7 @@ public class ProjectService {
 										if(m == 0) {
 											unionStr += decision;
 										} else {
-											unionStr += "+" + decision;
+											unionStr += TO_CCSL_HYPHEN + decision;
 										}
 									}
 									if(unionMap.containsKey(unionStr)) {
@@ -685,7 +703,7 @@ public class ProjectService {
 									if(from_node_name.equals("Start")) {
 										ccslList.add("B<" + pheValue);
 									} else {
-										ccslList.add(from_node_name + "<" + pheValue);
+										ccslList.add(from_node_name + STRICT_PRE + pheValue);
 									}
 								}
 							}
@@ -707,8 +725,8 @@ public class ProjectService {
 							}
 							
 							if(!unionMap.containsValue(pheValue)) {
-								if(to_node_name.contains("+(state)")) {
-									String state_name = to_node_name.split("\\+")[0];
+								if(to_node_name.contains(TAG_STATE)) {
+									String state_name = to_node_name.split(TAG_STATE_REGEX)[0];
 									unionList.add(state_name + ".s");
 //									String state_ccsl = state_name + ".s<" + state_name + ".f";
 //									if(!ccslList.contains(state_ccsl)) {
@@ -727,8 +745,8 @@ public class ProjectService {
 										if((temp_from_node_type.equals("Decision") && from_node.getNode_no() == temp_from_node.getNode_no()) ||
 												(temp_from_node_type.equals("Merge") && from_node.getNode_no() == temp_from_node.getNode_no()) ||
 												(temp_from_node_type.equals("Branch") && from_node.getNode_no() == temp_from_node.getNode_no())) {
-											if(temp_to_node_name.contains("+(state)")) {
-												String state_name = temp_to_node_name.split("\\+")[0];
+											if(temp_to_node_name.contains(TAG_STATE)) {
+												String state_name = temp_to_node_name.split(TAG_STATE_REGEX)[0];
 												unionList.add(state_name + ".s");
 //												String state_ccsl = state_name + ".s<" + state_name + ".f";
 //												if(!ccslList.contains(state_ccsl)) {
@@ -752,7 +770,7 @@ public class ProjectService {
 										if(m == 0) {
 											unionStr += decision;
 										} else {
-											unionStr += "+" + decision;
+											unionStr += TO_CCSL_HYPHEN + decision;
 										}
 										
 									}
@@ -760,18 +778,18 @@ public class ProjectService {
 										ccslList.add(pheValue + "=" + unionStr);
 									} else if(from_node_name.equals("Decision")) {
 										ccslList.add(pheValue + "=" + unionStr);
-										unionStr = unionStr.replace("+", "#");
+										unionStr = unionStr.replace(TO_CCSL_HYPHEN, "#");
 										ccslList.add(unionStr);
 									} else if(from_node_name.equals("Merge")) {
-										unionStr = unionStr.replace("+", "˄");
+										unionStr = unionStr.replace(TO_CCSL_HYPHEN, "˄");
 										ccslList.add(pheValue + "=" + unionStr);
 									}
 									unionMap.put(unionStr, pheValue);
 								} 
 							} else {
 								String unionKey = getKey(unionMap, pheValue);
-								if(to_node_name.contains("+(state)")) {
-									to_node_name = to_node_name.split("\\+")[0];
+								if(to_node_name.contains(TAG_STATE)) {
+									to_node_name = to_node_name.split(TAG_STATE_REGEX)[0];
 									String state_ccsl = to_node_name + ".s<" + to_node_name + ".f";
 									if(!ccslList.contains(state_ccsl)) {
 										ccslList.add(state_ccsl);
@@ -781,7 +799,7 @@ public class ProjectService {
 									if(to_node_name.equals("End")) {
 										to_node_name = "E";
 									}
-									ccslList.add(pheValue + "<" + to_node_name);
+									ccslList.add(pheValue + STRICT_PRE + to_node_name);
 								}
 							}
 						}
@@ -792,28 +810,28 @@ public class ProjectService {
 				// Behavior Enable(Beh → Exp)    R6
 				} 
 				else if(line_type.equals("BehEnable")) {
-					if(to_node_name.contains("+(state)")) {
-						String state_name = to_node_name.split("\\+")[0];
+					if(to_node_name.contains(TAG_STATE)) {
+						String state_name = to_node_name.split(TAG_STATE_REGEX)[0];
 						if(ccslCyclesCopy.contains(from_node_name)) {
 							for(int m = 1; m <= 4; m++) {
-								ccslList.add(from_node_name + "_" + m + "<" + state_name + ".s_" + m);
-								String state_ccsl = state_name + ".s_" + m + "<" + state_name + ".f_" + m;
+								ccslList.add(from_node_name + "_" + m + STRICT_PRE + state_name + ".s_" + m);
+								String state_ccsl = state_name + ".s_" + m + STRICT_PRE + state_name + ".f_" + m;
 								if(!ccslList.contains(state_ccsl)) {
 									ccslList.add(state_ccsl);
 								}
 							}
 						} else {
-							ccslList.add(from_node_name + "<" + state_name + ".s");
+							ccslList.add(from_node_name + STRICT_PRE + state_name + ".s");
 							String state_ccsl = state_name + ".s<" + state_name + ".f";
 							if(!ccslList.contains(state_ccsl)) {
 								ccslList.add(state_ccsl);
 							}
 						}
 					} else {
-						ccslList.add(from_node_name + "<" + to_node_name);
+						ccslList.add(from_node_name + STRICT_PRE + to_node_name);
 					}
 				} else if(line_type.equals("ExpEnable")) {
-					ccslList.add(from_node_name + "<" + to_node_name);
+					ccslList.add(from_node_name + STRICT_PRE + to_node_name);
 				}
 			}
 			// 去重
@@ -881,7 +899,7 @@ public class ProjectService {
 			for(Phenomenon phenomenon: phenomenonList) {
 				if(phenomenon.getPhenomenon_no() == node_no) {
 					if(phenomenon.getPhenomenon_type().equals("state")) {
-						return phenomenon.getPhenomenon_name() + "+(state)";
+						return phenomenon.getPhenomenon_name() + TAG_STATE;
 					} else {
 						return phenomenon.getPhenomenon_name();
 					}
@@ -988,8 +1006,8 @@ public class ProjectService {
 				Node toNode = line.getToNode();
 				String nodeType = toNode.getNode_type();
 				String nodeName = getNodeName(toNode, ctrlNodes, userAdd);
-				if(nodeName.contains("+(state)")) {
-					nodeName = nodeName.split("\\+")[0];
+				if(nodeName.contains(TAG_STATE)) {
+					nodeName = nodeName.split(TAG_STATE_REGEX)[0];
 				}
 				if(!nodeType.equals("Merge") && !nodeName.equals("Branch") && !nodeName.equals("Decision") && !nodeName.equals("End")) {
 					pheNameList.add(nodeName);
@@ -1086,8 +1104,8 @@ public class ProjectService {
 							String state2F = rightState + (i + 1) + ".f_" + m;
 							String stateS = "State" + stateNum + ".s";
 							String stateF = "State" + stateNum + ".f";
-							ccslList.add(stateS + "=" + state1S + "+" + state2S);
-							ccslList.add(stateF + "=" + state1F + "+" + state2F);
+							ccslList.add(stateS + "=" + state1S + TO_CCSL_HYPHEN + state2S);
+							ccslList.add(stateF + "=" + state1F + TO_CCSL_HYPHEN + state2F);
 							ccslList.add(state1S + "#" + state2S);
 							ccslList.add(state1F + "#" + state2F);
 							ccslList.add(stateS + "~" + stateF);
@@ -1102,8 +1120,8 @@ public class ProjectService {
 						String state2F = rightState + (i + 1) + ".f";
 						String stateS = "State" + stateNum + ".s";
 						String stateF = "State" + stateNum + ".f";
-						ccslList.add(stateS + "=" + state1S + "+" + state2S);
-						ccslList.add(stateF + "=" + state1F + "+" + state2F);
+						ccslList.add(stateS + "=" + state1S + TO_CCSL_HYPHEN + state2S);
+						ccslList.add(stateF + "=" + state1F + TO_CCSL_HYPHEN + state2F);
 						ccslList.add(state1S + "#" + state2S);
 						ccslList.add(state1F + "#" + state2F);
 						ccslList.add(stateS + "~" + stateF);
@@ -1157,9 +1175,9 @@ public class ProjectService {
 			for(int j = 0; j < ccslListCopy.size(); j++) {
 				String ccsl = ccslListCopy.get(j);
 				String leftStr = null, rightStr = null;
-				if(ccsl.contains("<")){
-					leftStr = ccsl.split("<")[0];
-					rightStr = ccsl.split("<")[1];
+				if(ccsl.contains(STRICT_PRE)){
+					leftStr = ccsl.split(STRICT_PRE)[0];
+					rightStr = ccsl.split(STRICT_PRE)[1];
 					// 找到情景图中的第一个现象
 					if(leftStr.equals("B")) {
 						if(!beginList.contains(rightStr)) {
@@ -1187,7 +1205,7 @@ public class ProjectService {
 				if(i == 0) {
 					unionStr += beginStr;
 				} else {
-					unionStr += "+" + beginStr;
+					unionStr += TO_CCSL_HYPHEN + beginStr;
 				}
 			}
 			ccslList.add(unionStr);
@@ -1201,8 +1219,8 @@ public class ProjectService {
 				String leftStr = null, rightStr = null, expression = null;
 				String leftState = null, rightState = null;
 				String equalLeft = null;
-				if(ccsl.contains("<")){
-					leftStr = ccsl.split("<")[0];
+				if(ccsl.contains(STRICT_PRE)){
+					leftStr = ccsl.split(STRICT_PRE)[0];
 					if(leftStr.contains(".")) {
 						leftState = leftStr.split("\\.")[1];
 						leftStr = leftStr.split("\\.")[0];
@@ -1210,7 +1228,7 @@ public class ProjectService {
 						leftState = leftStr;
 						leftStr = leftStr.split("_")[0];
 					}
-					rightStr = ccsl.split("<")[1];
+					rightStr = ccsl.split(STRICT_PRE)[1];
 					if(rightStr.contains(".")) {
 						rightState = rightStr.split("\\.")[1];
 						rightStr = rightStr.split("\\.")[0];
@@ -1218,7 +1236,7 @@ public class ProjectService {
 						rightState = rightStr;
 						rightStr = rightStr.split("_")[0];
 					}
-					expression = "<";
+					expression = STRICT_PRE;
 				} else if(ccsl.contains("~")) {
 					leftStr = ccsl.split("~")[0];
 					if(leftStr.contains(".")) {
@@ -1231,19 +1249,19 @@ public class ProjectService {
 						rightStr = rightStr.split("\\.")[0];
 					}
 					expression = "~";
-				} else if(ccsl.contains("+")) {
+				} else if(ccsl.contains(TO_CCSL_HYPHEN)) {
 					equalLeft = ccsl.split("=")[0];
-					leftStr = ccsl.split("=")[1].split("\\+")[0];
+					leftStr = ccsl.split("=")[1].split(TO_CCSL_HYPHEN)[0];
 					if(leftStr.contains(".")) {
 						leftState = leftStr.split("\\.")[1];
 						leftStr = leftStr.split("\\.")[0];
 					}
-					rightStr = ccsl.split("=")[1].split("\\+")[1];
+					rightStr = ccsl.split("=")[1].split(TO_CCSL_HYPHEN)[1];
 					if(rightStr.contains(".")) {
 						rightState = rightStr.split("\\.")[1];
 						rightStr = rightStr.split("\\.")[0];
 					}
-					expression = "+";
+					expression = TO_CCSL_HYPHEN;
 				} else if(ccsl.contains("#")) {
 					leftStr = ccsl.split("#")[0];
 					if(leftStr.contains(".")) {
@@ -1314,9 +1332,9 @@ public class ProjectService {
 //				}
 				String ccslTmp = null;
 				if(leftFlag && rightFlag) {	
-					if(expression.equals("<") || expression.equals("~") || expression.equals("#")) {
+					if(expression.equals(STRICT_PRE) || expression.equals("~") || expression.equals("#")) {
 						ccslTmp = leftStr + expression + rightStr;
-					} else if(expression.equals("+") || expression.equals("˄") || expression.equals("˅")) {
+					} else if(expression.equals(TO_CCSL_HYPHEN) || expression.equals("˄") || expression.equals("˅")) {
 						ccslTmp = equalLeft + "=" + leftStr + expression + rightStr;
 					}
 					if(!ccslList.contains(ccslTmp)) {
@@ -1330,9 +1348,9 @@ public class ProjectService {
 							rightStr += "." + rightState;
 						}
 					} 
-					if(expression.equals("<") || expression.equals("~") || expression.equals("#")) {
+					if(expression.equals(STRICT_PRE) || expression.equals("~") || expression.equals("#")) {
 						ccslTmp = leftStr + expression + rightStr;
-					} else if(expression.equals("+") || expression.equals("˄") || expression.equals("˅")) {
+					} else if(expression.equals(TO_CCSL_HYPHEN) || expression.equals("˄") || expression.equals("˅")) {
 						ccslTmp = equalLeft + "=" + leftStr + expression + rightStr;
 					}
 					if(!ccslList.contains(ccslTmp)) {
@@ -1346,9 +1364,9 @@ public class ProjectService {
 							leftStr += "." + leftState;
 						}
 					} 
-					if(expression.equals("<") || expression.equals("~") || expression.equals("#")) {
+					if(expression.equals(STRICT_PRE) || expression.equals("~") || expression.equals("#")) {
 						ccslTmp = leftStr + expression + rightStr;
-					} else if(expression.equals("+") || expression.equals("˄") || expression.equals("˅")) {
+					} else if(expression.equals(TO_CCSL_HYPHEN) || expression.equals("˄") || expression.equals("˅")) {
 						ccslTmp = equalLeft + "=" + leftStr + expression + rightStr;
 					}
 					if(!ccslList.contains(ccslTmp)) {
@@ -1469,8 +1487,8 @@ public class ProjectService {
 					Node toNode = line.getToNode();
 					String nodeType = toNode.getNode_type();
 					String nodeName = getNodeName(toNode, ctrlNodes, userAdd);
-					if(nodeName.contains("+(state)")) {
-//						nodeName = nodeName.split("\\+")[0];
+					if(nodeName.contains(TAG_STATE)) {
+//						nodeName = nodeName.split(TAG_STATE_REGEX)[0];
 						break;
 					}
 					if(!nodeType.equals("Merge") && !nodeName.equals("Branch") && !nodeName.equals("Decision") && !nodeName.equals("End")) {
@@ -1524,9 +1542,9 @@ public class ProjectService {
 		for(int i = ontologyLength; i < ccslListTmp.size(); i++) {
 			String ccsl = ccslListTmp.get(i);
 			// 4.1 删除冗余的StrictPre关系
-			if(ccsl.contains("<")) {
-				String left = ccsl.split("<")[0];
-				String right = ccsl.split("<")[1];
+			if(ccsl.contains(STRICT_PRE)) {
+				String left = ccsl.split(STRICT_PRE)[0];
+				String right = ccsl.split(STRICT_PRE)[1];
 				String removeStr = isRedundant(ccslListTmp, left, right, ontologyLength);
 				if(removeStr != "") {
 					removeCCSLs.add(removeStr);
@@ -1554,7 +1572,7 @@ public class ProjectService {
 	}
 	
 	private String isRedundant(List<String> ccslList, String left, String right, int ontologyLength) {
-		String ccsl = left + "<" + right;
+		String ccsl = left + STRICT_PRE + right;
 		String tempLeft = left, tempStr = "";
 		boolean flag = false;
 		int count = 0;
@@ -1564,10 +1582,10 @@ public class ProjectService {
 				break;
 			}
 			String temp = ccslList.get(i);
-			if(temp.contains("<")) {
-				String leftTemp = temp.split("<")[0];
+			if(temp.contains(STRICT_PRE)) {
+				String leftTemp = temp.split(STRICT_PRE)[0];
 				if(leftTemp.equals(tempLeft) && !temp.equals(ccsl)) {
-					tempLeft = temp.split("<")[1];
+					tempLeft = temp.split(STRICT_PRE)[1];
 					if(count == 0) {
 						tempStr = tempLeft;
 					}
@@ -1575,7 +1593,7 @@ public class ProjectService {
 					if(tempLeft.equals("E") && !right.equals("E")) {
 						tempLeft = tempStr;
 					}
-				} else if(!tempStr.equals("") && temp.split("<")[1].equals("E")) {
+				} else if(!tempStr.equals("") && temp.split(STRICT_PRE)[1].equals("E")) {
 					tempLeft = tempStr;
 				}
 			}
@@ -1706,22 +1724,22 @@ public class ProjectService {
 	private List<DirectedLine> getDirectedLineList(List<String> CCSLList) {
 		List<DirectedLine> directedLineList = new ArrayList<>();
 		for(String ccsl: CCSLList) {
-			if(ccsl.contains("<")) {
-				String leftStr = ccsl.split("<")[0];
-				String rightStr = ccsl.split("<")[1];
+			if(ccsl.contains(STRICT_PRE)) {
+				String leftStr = ccsl.split(STRICT_PRE)[0];
+				String rightStr = ccsl.split(STRICT_PRE)[1];
 				if(!leftStr.equals("B")) {
 					directedLineList.add(new DirectedLine(leftStr, rightStr));
 				}
-			} else if(ccsl.contains("=") && ccsl.contains("+")) {
+			} else if(ccsl.contains("=") && ccsl.contains(TO_CCSL_HYPHEN)) {
 				String leftStr = ccsl.split("=")[0];
 				if(leftStr.equals("U")) {
 					String rigthStr = ccsl.split("=")[1];
-					String event1 = rigthStr.split("\\+")[0];
-					String event2 = rigthStr.split("\\+")[1];
+					String event1 = rigthStr.split(TO_CCSL_HYPHEN)[0];
+					String event2 = rigthStr.split(TO_CCSL_HYPHEN)[1];
 					directedLineList.add(new DirectedLine("B", event1));
 					directedLineList.add(new DirectedLine("B", event2));
 				}
-			} else if(ccsl.contains("=") && !ccsl.contains("+")) {
+			} else if(ccsl.contains("=") && !ccsl.contains(TO_CCSL_HYPHEN)) {
 				String event1 = ccsl.split("=")[0];
 				String event2 = ccsl.split("=")[1];
 				directedLineList.add(new DirectedLine(event1, event2));
@@ -1844,14 +1862,17 @@ public class ProjectService {
 		}
 		return ccslList;
 	}
-	
+
+	// TODO 修改 CCSL 转换的业务逻辑
+	// BUG-1: (n-1) ✔️ (n ✖️ 缺少了 ) 已修改
+	// BUG-2: 一些 +(state) 没有被删去，应该是提取 nodeName 的时候漏掉了，也可能是改多了，在细节之处出错
 	public void writeDot(String fileName, List<String> ccslList) {
 //		int index = 1;
 		String fileContent = "digraph {\n";
 		for(String ccsl : ccslList) {
-			if(ccsl.contains("<")) {
-				String left = ccsl.split("<")[0];
-				String right = ccsl.split("<")[1];
+			if(ccsl.contains(STRICT_PRE)) {
+				String left = ccsl.split(STRICT_PRE)[0];
+				String right = ccsl.split(STRICT_PRE)[1];
 				if(left.contains(".") || left.contains("(") || left.contains("+")) {
 					left = "\"" + left + "\"";
 				} 
@@ -1871,6 +1892,11 @@ public class ProjectService {
 				fileContent = fileContent + left + " -> " + right + "[\"style\"=\"dashed\"]\n";
 			} else if(ccsl.contains("#")) {
 				String left = ccsl.split("#")[0];
+				// 这里不考虑合并关系，仅拆开等号右边的字符串 -- 是否正确？
+				String temp = left.split("=")[0];
+				if (!temp.equals(left)) {
+					left = left.split("=")[1];
+				}
 				String right = ccsl.split("#")[1];
 				if(left.contains(".") || left.contains("(") || left.contains("+")) {
 					left = "\"" + left + "\"";
@@ -1879,14 +1905,14 @@ public class ProjectService {
 					right = "\"" + right + "\"";
 				}
 				fileContent = fileContent + left + " -> " + right + "[\"color\"=\"red\",\"style\"=\"normal\",\"dir\"=\"both\",\"arrowtail\"=\"diamond\",\"arrowhead\"=\"diamond\"]\n";
-			} else if(ccsl.contains("+")) {
+			} else if(ccsl.contains(TO_CCSL_HYPHEN)) {
 				String leftStr = ccsl.split("=")[0];
 				if(leftStr.contains(".") || leftStr.contains("(") || leftStr.contains("+")) {
 					leftStr = "\"" + leftStr + "\"";
 				}
 				String rightStr = ccsl.split("=")[1];
-				String unionStr1 = rightStr.split("\\+")[0];
-				String unionStr2 = rightStr.split("\\+")[1];
+				String unionStr1 = rightStr.split(TO_CCSL_HYPHEN)[0];
+				String unionStr2 = rightStr.split(TO_CCSL_HYPHEN)[1];
 				if(unionStr1.contains(".") || unionStr1.contains("(") || unionStr1.contains("+")) {
 					unionStr1 = "\"" + unionStr1 + "\"";
 				}
@@ -1949,7 +1975,7 @@ public class ProjectService {
 				}
 				fileContent = fileContent + unionStr1 + " -> " + leftStr + "[\"style\"=\"dashed\",\"color\"=\"orange\"]\n";
 				fileContent = fileContent + unionStr2 + " -> " + leftStr + "[\"style\"=\"dashed\"\"color\"=\"orange\"]\n";
-			} else if(ccsl.contains("=") && !ccsl.contains("+")) {
+			} else if(ccsl.contains("=") && !ccsl.contains(TO_CCSL_HYPHEN)) {
 				String left = ccsl.split("=")[0];
 				String right = ccsl.split("=")[1];
 				if(left.contains(".") || left.contains("(") || left.contains("+")) {
@@ -1969,9 +1995,9 @@ public class ProjectService {
 		String address;
 
 		if(userName.equals("")) {
-			address = AddressService.rootAddress;
+			address = ScenarioRVConstants.rootAddress;
 		}else {
-			address = AddressService.userAddress + userName + "/";
+			address = ScenarioRVConstants.userAddress + userName + "/";
 		}
 		List<VersionInfo> versions = fileService.searchVersionInfo(userName, projectName);
 		try {
@@ -2017,6 +2043,6 @@ public class ProjectService {
 		}
 	}
 
-	
+
 
 }

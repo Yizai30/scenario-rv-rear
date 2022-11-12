@@ -15,6 +15,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.example.demo.util.GitUtil;
 import org.dom4j.Document;
 import org.dom4j.DocumentException;
 import org.dom4j.DocumentHelper;
@@ -289,7 +290,14 @@ public class FileService {
 		}
 		return scenarioGraphList;
 	}
-	
+
+	/**
+	 * 根据 xml 文件路径载入情景图
+	 *
+	 * @param userAdd 用户的文件路径
+	 * @param contextDiagramName xml 文件名
+	 * @return 情景图对象
+	 */
 	private ContextDiagram getContextDiagram(String userAdd, String contextDiagramName) {
 
 		ContextDiagram contextDiagram = new ContextDiagram();
@@ -1529,7 +1537,6 @@ public class FileService {
 		String ccslSetName = sgEle.getText();
 		SAXReader saxReader = new SAXReader();
 		try {
-//			File senarioGraphFile = new File(userAdd + fileName + "/" + ccslSetName + ".xml");
 			File senarioGraphFile = new File(userAdd + "/" + ccslSetName + ".xml");
 			if(!senarioGraphFile.exists()) {
 				return null;

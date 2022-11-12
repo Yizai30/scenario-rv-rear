@@ -1,45 +1,37 @@
 package com.example.demo.bean;
 
+import lombok.Data;
+import lombok.ToString;
+
 import java.io.Serializable;
 
+/**
+ * 现象
+ */
+@Data
 public class Phenomenon implements Cloneable,Serializable {
-	private static final long serialVersionUID = 1L;
-	private int phenomenon_no;	//现象编号
-	private String phenomenon_name;	//现象名称
-	private String phenomenon_type;	//现象类型
-	private String phenomenon_from;	//发送方
-	private String phenomenon_to;	//接收方
-	
-	public int getPhenomenon_no() {
-		return phenomenon_no;
-	}
-	public void setPhenomenon_no(int phenomenon_no) {
-		this.phenomenon_no = phenomenon_no;
-	}
-	public String getPhenomenon_name() {
-		return phenomenon_name;
-	}
-	public void setPhenomenon_name(String phenomenon_name) {
-		this.phenomenon_name = phenomenon_name;
-	}
-	public String getPhenomenon_type() {
-		return phenomenon_type;
-	}
-	public void setPhenomenon_type(String phenomenon_type) {
-		this.phenomenon_type = phenomenon_type;
-	}
-	public String getPhenomenon_from() {
-		return phenomenon_from;
-	}
-	public void setPhenomenon_from(String phenomenon_from) {
-		this.phenomenon_from = phenomenon_from;
-	}
-	public String getPhenomenon_to() {
-		return phenomenon_to;
-	}
-	public void setPhenomenon_to(String phenomenon_to) {
-		this.phenomenon_to = phenomenon_to;
-	}
+	private static final long serialVersionUID = -5997110113751940365L;
+	/**
+	 * 现象编号
+	 */
+	private int phenomenon_no;
+	/**
+	 * 现象名称
+	 */
+	private String phenomenon_name;
+	/**
+	 * 现象类型
+	 */
+	private String phenomenon_type;
+	/**
+	 * 发送方
+	 */
+	private String phenomenon_from;
+	/**
+	 * 接收方
+	 */
+	private String phenomenon_to;
+
 	@Override    
 	public Object clone() {        
 		Phenomenon phenomenon = null;        
@@ -63,35 +55,47 @@ public class Phenomenon implements Cloneable,Serializable {
 	}
 	@Override
 	public boolean equals(Object obj) {
-		if (this == obj)
+		if (this == obj) {
 			return true;
-		if (obj == null)
+		}
+		if (obj == null) {
 			return false;
-		if (getClass() != obj.getClass())
+		}
+		if (getClass() != obj.getClass()) {
 			return false;
+		}
 		Phenomenon other = (Phenomenon) obj;
 		if (phenomenon_from == null) {
-			if (other.phenomenon_from != null)
+			if (other.phenomenon_from != null) {
 				return false;
-		} else if (!phenomenon_from.equals(other.phenomenon_from))
+			}
+		} else if (!phenomenon_from.equals(other.phenomenon_from)) {
 			return false;
+		}
 		if (phenomenon_name == null) {
-			if (other.phenomenon_name != null)
+			if (other.phenomenon_name != null) {
 				return false;
-		} else if (!phenomenon_name.equals(other.phenomenon_name))
+			}
+		} else if (!phenomenon_name.equals(other.phenomenon_name)) {
 			return false;
-		if (phenomenon_no != other.phenomenon_no)
+		}
+		if (phenomenon_no != other.phenomenon_no) {
 			return false;
+		}
 		if (phenomenon_to == null) {
-			if (other.phenomenon_to != null)
+			if (other.phenomenon_to != null) {
 				return false;
-		} else if (!phenomenon_to.equals(other.phenomenon_to))
+			}
+		} else if (!phenomenon_to.equals(other.phenomenon_to)) {
 			return false;
+		}
 		if (phenomenon_type == null) {
-			if (other.phenomenon_type != null)
+			if (other.phenomenon_type != null) {
 				return false;
-		} else if (!phenomenon_type.equals(other.phenomenon_type))
+			}
+		} else if (!phenomenon_type.equals(other.phenomenon_type)) {
 			return false;
+		}
 		return true;
 	}
 	

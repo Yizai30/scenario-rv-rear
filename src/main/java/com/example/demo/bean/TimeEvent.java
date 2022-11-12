@@ -1,19 +1,12 @@
 package com.example.demo.bean;
 
+import lombok.Data;
+
+/**
+ * 时间事件 时钟事件？
+ */
+@Data
 public class TimeEvent {
 	int time;
 	String[] events;
-	public int getTime() {
-		return time;
-	}
-	public void setTime(int time) {
-		this.time = time;
-	}
-	public String[] getEvents() {
-		return events;
-	}
-	public void setEvents(String[] events) {
-		this.events = events;
-	}
-	
 }

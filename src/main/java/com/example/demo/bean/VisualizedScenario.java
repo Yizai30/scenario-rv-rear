@@ -1,19 +1,12 @@
 package com.example.demo.bean;
 
+import lombok.Data;
+
+/**
+ * 可视化情景
+ */
+@Data
 public class VisualizedScenario {
 	int conflictTime;
 	TimeEvent timeEvents;
-	public int getConflictTime() {
-		return conflictTime;
-	}
-	public void setConflictTime(int conflictTime) {
-		this.conflictTime = conflictTime;
-	}
-	public TimeEvent getTimeEvents() {
-		return timeEvents;
-	}
-	public void setTimeEvents(TimeEvent timeEvents) {
-		this.timeEvents = timeEvents;
-	}
-	
 }
