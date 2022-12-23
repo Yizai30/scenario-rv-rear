@@ -3,6 +3,7 @@ package com.example.demo.controller;
 import java.io.IOException;
 import java.util.List;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -22,6 +23,7 @@ import com.example.demo.service.FileService;
 @RestController
 @CrossOrigin
 @RequestMapping("/file")
+@Slf4j
 public class FileController {
 	@Autowired	// 自动装配
 	FileService fileService;
@@ -80,7 +82,6 @@ public class FileController {
 	@RequestMapping(value = "/getScenarioDiagrams", method = RequestMethod.GET)
 	@ResponseBody
 	public Project getScenarioDiagrams(@RequestParam String username) {
-//		System.out.println(username);
 		long startTime = System.currentTimeMillis();    //获取开始时间
 		Project project = fileService.getScenarioDiagrams(getUserAdd(username));
 		long endTime = System.currentTimeMillis();    //获取结束时间

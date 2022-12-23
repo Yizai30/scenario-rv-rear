@@ -89,6 +89,17 @@ public class ProjectController {
 		System.out.println("编排时间：" + time + "ms");    //输出程序运行时间
 		return ccslset;
 	}
+
+	@RequestMapping(value = "/InconsistentLocate", method = RequestMethod.POST)
+	@ResponseBody
+	public CCSLSet InconsistentLocate(@RequestBody Project project) {
+		long startTime = System.currentTimeMillis();    //获取开始时间
+		CCSLSet ccslset = projectService.getTheOrchestrateCCSLSet(getUserAdd("test"), project);
+		long endTime = System.currentTimeMillis();    //获取结束时间
+		time = endTime - startTime;    //输出程序运行时间
+		System.out.println("编排时间：" + time + "ms");    //输出程序运行时间
+		return ccslset;
+	}
 	
 	@RequestMapping(value = "/visualizeScenario", method = RequestMethod.POST)
 	@ResponseBody

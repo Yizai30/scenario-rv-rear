@@ -72,7 +72,7 @@ public class ProjectService {
 				Line line = lineList.get(i);
 				String line_type = line.getLine_type();
 				// Synchronicity(Beh ↔ Exp)    R5
-				if(line_type.equals("Synchrony")) {
+				if(line_type.equals("SYNC")) {
 					continue;
 				}
 				Node from_node = line.getFromNode();
@@ -224,7 +224,7 @@ public class ProjectService {
 										if(m == 0) {
 											unionStr += decision;
 										} else {
-											unionStr += TO_CCSL_HYPHEN + decision;
+											unionStr += UNION_STR + decision;
 										}
 										
 									}
@@ -232,10 +232,10 @@ public class ProjectService {
 										ccslList.add(pheValue + "=" + unionStr);
 									} else if(from_node_name.equals("Decision")) {
 										ccslList.add(pheValue + "=" + unionStr);
-										unionStr = unionStr.replace(TO_CCSL_HYPHEN, "#");
+										unionStr = unionStr.replace(UNION_STR, EXCLUSIVE);
 										ccslList.add(unionStr);
 									} else if(from_node_name.equals("Merge")) {
-										unionStr = unionStr.replace(TO_CCSL_HYPHEN, "˄");
+										unionStr = unionStr.replace(UNION_STR, INFIMUM);
 										ccslList.add(pheValue + "=" + unionStr);
 									}
 									unionMap.put(unionStr, pheValue);
@@ -254,7 +254,7 @@ public class ProjectService {
 									if(to_node_name.contains(TAG_STATE)) {
 										to_node_name = to_node_name.split(TAG_STATE_REGEX)[0];
 										// 状态的对应的开始事件节点和其它节点取下确界约束 why？
-										String unionStr = unionKey + "˄" + to_node_name + ".s";
+										String unionStr = unionKey + INFIMUM + to_node_name + ".s";
 										// 是否需要去重？因为已经包含 pheValue 了
 										ccslList.add(pheValue + "=" + unionStr);
 										unionMap.put(unionStr, pheValue);
@@ -419,7 +419,7 @@ public class ProjectService {
 											if(m == 0) {
 												unionStr += decision;
 											} else {
-												unionStr += TO_CCSL_HYPHEN + decision;
+												unionStr += UNION_STR + decision;
 											}
 										}
 										if(unionMap.containsKey(unionStr)) {
@@ -429,7 +429,7 @@ public class ProjectService {
 											if(to_node_type.equals("Branch")) {
 												ccslList.add(pheValue + "=" + unionStr);
 											} else if(to_node_name.equals("Merge")) {
-												unionStr = unionStr.replace(TO_CCSL_HYPHEN, "˅");
+												unionStr = unionStr.replace(UNION_STR, SUPREMUM);
 												ccslList.add(pheValue + "=" + unionStr);
 											}
 											ccslList.add(pheValue + "=" + unionStr);
@@ -608,7 +608,7 @@ public class ProjectService {
 											if(m == 0) {
 												unionStr += decision;
 											} else {
-												unionStr += TO_CCSL_HYPHEN + decision;
+												unionStr += UNION_STR + decision;
 											}
 										}
 										if(unionMap.containsKey(unionStr)) {
@@ -681,7 +681,7 @@ public class ProjectService {
 										if(m == 0) {
 											unionStr += decision;
 										} else {
-											unionStr += TO_CCSL_HYPHEN + decision;
+											unionStr += UNION_STR + decision;
 										}
 									}
 									if(unionMap.containsKey(unionStr)) {
@@ -770,7 +770,7 @@ public class ProjectService {
 										if(m == 0) {
 											unionStr += decision;
 										} else {
-											unionStr += TO_CCSL_HYPHEN + decision;
+											unionStr += UNION_STR + decision;
 										}
 										
 									}
@@ -778,10 +778,10 @@ public class ProjectService {
 										ccslList.add(pheValue + "=" + unionStr);
 									} else if(from_node_name.equals("Decision")) {
 										ccslList.add(pheValue + "=" + unionStr);
-										unionStr = unionStr.replace(TO_CCSL_HYPHEN, "#");
+										unionStr = unionStr.replace(UNION_STR, EXCLUSIVE);
 										ccslList.add(unionStr);
 									} else if(from_node_name.equals("Merge")) {
-										unionStr = unionStr.replace(TO_CCSL_HYPHEN, "˄");
+										unionStr = unionStr.replace(UNION_STR, INFIMUM);
 										ccslList.add(pheValue + "=" + unionStr);
 									}
 									unionMap.put(unionStr, pheValue);
@@ -835,7 +835,7 @@ public class ProjectService {
 				}
 			}
 			// 去重
-			ccslList.add("B~E");
+			ccslList.add("B" + ALTER_STR + "E");
 			ccslList = removeRedundantString(ccslList);
 			CCSLSet ccsl = new CCSLSet("CCSL-" + ccslNo, ccslList, "B", "E");
 			ccslset.add(ccsl);
@@ -891,6 +891,7 @@ public class ProjectService {
 		return cycleStrs;
 	}
 
+	// todo event -> instruction + signal
 	public String getNodeName(Node node, List<CtrlNode> ctrlNodes, String address) {
 		List<Phenomenon> phenomenonList = getPhenomenonList(address);
 		String node_type = node.getNode_type();
@@ -898,6 +899,7 @@ public class ProjectService {
 		if(node_type.equals("BehInt") || node_type.equals("ConnInt") || node_type.equals("ExpInt")) {
 			for(Phenomenon phenomenon: phenomenonList) {
 				if(phenomenon.getPhenomenon_no() == node_no) {
+					// todo 在这里对 phenomenon_type = signal | instruction 作区分存储（考虑 map）
 					if(phenomenon.getPhenomenon_type().equals("state")) {
 						return phenomenon.getPhenomenon_name() + TAG_STATE;
 					} else {
@@ -913,6 +915,27 @@ public class ProjectService {
 			}
 		}
 		return "";
+	}
+
+	/**
+	 * 获取节点对应的现象
+	 *
+	 * @param node
+	 * @param address
+	 * @return
+	 */
+	public String getNodePhenomenonType(Node node, String address) {
+		List<Phenomenon> phenomenonList = getPhenomenonList(address);
+		String node_type = node.getNode_type();
+		int node_no = node.getNode_no();
+		if(node_type.equals("BehInt") || node_type.equals("ConnInt") || node_type.equals("ExpInt")) {
+			for(Phenomenon phenomenon: phenomenonList) {
+				if(phenomenon.getPhenomenon_no() == node_no) {
+					return phenomenon.getPhenomenon_type();
+				}
+			}
+		}
+		return null;
 	}
 	
 	private List<Phenomenon> getPhenomenonList(String address){
@@ -981,7 +1004,7 @@ public class ProjectService {
         return key;
     }
 
-	
+	// todo 检查 CCSL的合并、时钟图的合并
 	public CCSLSet CCSLComposition(String userAdd, Project project) {
 		List<String> ccslList = new ArrayList<String>();
 		int stateNum = 1;
@@ -997,6 +1020,8 @@ public class ProjectService {
 		// 全部现象列表
 		List<String> allPhenomenon = new ArrayList<String>();
 		List<String> removePhenomenon = new ArrayList<String>();
+		// 节点对应的现象类型
+		Map<String, String> nodePhenomenon = new HashMap<String, String>();
 		for(int i = 0; i < scenarioGraphs.size(); i++) {
 			ScenarioGraph scenarioGraph = scenarioGraphs.get(i);
 			List<Line> lineList = scenarioGraph.getLineList();
@@ -1006,14 +1031,16 @@ public class ProjectService {
 				Node toNode = line.getToNode();
 				String nodeType = toNode.getNode_type();
 				String nodeName = getNodeName(toNode, ctrlNodes, userAdd);
+				String nodePhenomenonType = getNodePhenomenonType(toNode, userAdd);
 				if(nodeName.contains(TAG_STATE)) {
 					nodeName = nodeName.split(TAG_STATE_REGEX)[0];
 				}
+				nodePhenomenon.put(nodeName, nodePhenomenonType);
 				if(!nodeType.equals("Merge") && !nodeName.equals("Branch") && !nodeName.equals("Decision") && !nodeName.equals("End")) {
 					pheNameList.add(nodeName);
 					if(line.getLine_type().equals("BehOrder") || line.getLine_type().equals("ExpOrder")) {
 						allPhenomenon.add(nodeName);
-					} else if(line.getLine_type().equals("Synchrony")) {
+					} else if(line.getLine_type().equals("SYNC")) {
 						removePhenomenon.add(nodeName);
 					}
 //					if(!allPhenomenon.contains(nodeName)) {
@@ -1026,7 +1053,7 @@ public class ProjectService {
 //					}
 				}
 				
-//				if(line.getLine_type().equals("Synchrony") || line.getLine_type().equals("ExpEnable")) {
+//				if(line.getLine_type().equals("SYNC") || line.getLine_type().equals("ExpEnable")) {
 //					removePhenomenon.add(nodeName);
 //				}
 			}
@@ -1047,7 +1074,9 @@ public class ProjectService {
 				map.replace(commonPhe, val + 1);
 			}
 		}
-		for (Map.Entry<String, Integer> entry : map.entrySet()) {  
+
+		// todo 为什么需要满足 entry.getValue() >= 2
+		for (Map.Entry<String, Integer> entry : map.entrySet()) {
 			if(entry.getValue() >= 2) {
 				commonPhenomenon.add(entry.getKey());
 			} else {
@@ -1084,14 +1113,14 @@ public class ProjectService {
 				if(commonPhenomenon.contains(leftEvent) && commonPhenomenon.contains(rightEvent)) {
 					if(cycleEvent == true && cycleState == true) {
 						for(int m = 1; m <= 4; m++) {
-							ccslList.add(leftEvent + "_" + m + (i + 1) + "#" + rightEvent + "_" + m + (i + 1));
+							ccslList.add(leftEvent + "_" + m + (i + 1) + EXCLUSIVE + rightEvent + "_" + m + (i + 1));
 						}
 					} else {
-						ccslList.add(leftEvent + (i + 1) + "#" + rightEvent + (i + 1));
+						ccslList.add(leftEvent + (i + 1) + EXCLUSIVE + rightEvent + (i + 1));
 					}
 				}
 			}
-			// 将环境本体中有关互斥状态对的CCSL约束添加进来
+			// 将环境本体中有关互斥状态对的 CCSL 约束添加进来
 			for(String excludeStr: excludeStates) {
 				String leftState = excludeStr.split(" exclude ")[0];
 				String rightState = excludeStr.split(" exclude ")[1];
@@ -1104,13 +1133,13 @@ public class ProjectService {
 							String state2F = rightState + (i + 1) + ".f_" + m;
 							String stateS = "State" + stateNum + ".s";
 							String stateF = "State" + stateNum + ".f";
-							ccslList.add(stateS + "=" + state1S + TO_CCSL_HYPHEN + state2S);
-							ccslList.add(stateF + "=" + state1F + TO_CCSL_HYPHEN + state2F);
-							ccslList.add(state1S + "#" + state2S);
-							ccslList.add(state1F + "#" + state2F);
-							ccslList.add(stateS + "~" + stateF);
-							ccslList.add(state1S + "~" + state1F);
-							ccslList.add(state2S + "~"+ state2F);
+							ccslList.add(stateS + "=" + state1S + UNION_STR + state2S);
+							ccslList.add(stateF + "=" + state1F + UNION_STR + state2F);
+							ccslList.add(state1S + EXCLUSIVE + state2S);
+							ccslList.add(state1F + EXCLUSIVE + state2F);
+							ccslList.add(stateS + ALTER_STR + stateF);
+							ccslList.add(state1S + ALTER_STR + state1F);
+							ccslList.add(state2S + ALTER_STR + state2F);
 							stateNum++;
 						}
 					} else {
@@ -1120,13 +1149,13 @@ public class ProjectService {
 						String state2F = rightState + (i + 1) + ".f";
 						String stateS = "State" + stateNum + ".s";
 						String stateF = "State" + stateNum + ".f";
-						ccslList.add(stateS + "=" + state1S + TO_CCSL_HYPHEN + state2S);
-						ccslList.add(stateF + "=" + state1F + TO_CCSL_HYPHEN + state2F);
-						ccslList.add(state1S + "#" + state2S);
-						ccslList.add(state1F + "#" + state2F);
-						ccslList.add(stateS + "~" + stateF);
-						ccslList.add(state1S + "~" + state1F);
-						ccslList.add(state2S + "~"+ state2F);
+						ccslList.add(stateS + "=" + state1S + UNION_STR + state2S);
+						ccslList.add(stateF + "=" + state1F + UNION_STR + state2F);
+						ccslList.add(state1S + EXCLUSIVE + state2S);
+						ccslList.add(state1F + EXCLUSIVE + state2F);
+						ccslList.add(stateS + ALTER_STR + stateF);
+						ccslList.add(state1S + ALTER_STR + state1F);
+						ccslList.add(state2S + ALTER_STR + state2F);
 						stateNum++;
 					}
 					
@@ -1182,7 +1211,8 @@ public class ProjectService {
 					if(leftStr.equals("B")) {
 						if(!beginList.contains(rightStr)) {
 							if(commonPhenomenon.contains(rightStr)) {
-								beginList.add(rightStr + (i + 1));
+//								beginList.add(rightStr + (i + 1));
+								beginList.add(rightStr);
 							} else {
 								beginList.add(rightStr);
 							}
@@ -1205,7 +1235,7 @@ public class ProjectService {
 				if(i == 0) {
 					unionStr += beginStr;
 				} else {
-					unionStr += TO_CCSL_HYPHEN + beginStr;
+					unionStr += UNION_STR + beginStr;
 				}
 			}
 			ccslList.add(unionStr);
@@ -1224,7 +1254,7 @@ public class ProjectService {
 					if(leftStr.contains(".")) {
 						leftState = leftStr.split("\\.")[1];
 						leftStr = leftStr.split("\\.")[0];
-					} else if(leftStr.contains("_")) {
+					} else if(leftStr.contains("_")) { // todo "." 表示状态，那 "_" 呢 ？
 						leftState = leftStr;
 						leftStr = leftStr.split("_")[0];
 					}
@@ -1237,104 +1267,112 @@ public class ProjectService {
 						rightStr = rightStr.split("_")[0];
 					}
 					expression = STRICT_PRE;
-				} else if(ccsl.contains("~")) {
-					leftStr = ccsl.split("~")[0];
+				} else if(ccsl.contains(ALTER_STR)) {
+					leftStr = ccsl.split(ALTER_STR)[0];
 					if(leftStr.contains(".")) {
 						leftState = leftStr.split("\\.")[1];
 						leftStr = leftStr.split("\\.")[0];
 					}
-					rightStr = ccsl.split("~")[1];
+					rightStr = ccsl.split(ALTER_STR)[1];
 					if(rightStr.contains(".")) {
 						rightState = rightStr.split("\\.")[1];
 						rightStr = rightStr.split("\\.")[0];
 					}
-					expression = "~";
-				} else if(ccsl.contains(TO_CCSL_HYPHEN)) {
+					expression = ALTER_STR;
+				} else if(ccsl.contains(UNION_STR)) {
 					equalLeft = ccsl.split("=")[0];
-					leftStr = ccsl.split("=")[1].split(TO_CCSL_HYPHEN)[0];
+					leftStr = ccsl.split("=")[1].split(UNION_STR_REGEX)[0];
 					if(leftStr.contains(".")) {
 						leftState = leftStr.split("\\.")[1];
 						leftStr = leftStr.split("\\.")[0];
 					}
-					rightStr = ccsl.split("=")[1].split(TO_CCSL_HYPHEN)[1];
+					rightStr = ccsl.split("=")[1].split(UNION_STR_REGEX)[1];
 					if(rightStr.contains(".")) {
 						rightState = rightStr.split("\\.")[1];
 						rightStr = rightStr.split("\\.")[0];
 					}
-					expression = TO_CCSL_HYPHEN;
-				} else if(ccsl.contains("#")) {
-					leftStr = ccsl.split("#")[0];
+					expression = UNION_STR;
+				} else if(ccsl.contains(EXCLUSIVE)) {
+					leftStr = ccsl.split(EXCLUSIVE)[0];
 					if(leftStr.contains(".")) {
 						leftState = leftStr.split("\\.")[1];
 						leftStr = leftStr.split("\\.")[0];
 					}
-					rightStr = ccsl.split("#")[1];
+					rightStr = ccsl.split(EXCLUSIVE)[1];
 					if(rightStr.contains(".")) {
 						rightState = rightStr.split("\\.")[1];
 						rightStr = rightStr.split("\\.")[0];
 					}
-					expression = "#";
-				} else if(ccsl.contains("˄")) {
+					expression = EXCLUSIVE;
+				} else if(ccsl.contains(INFIMUM)) {
 					equalLeft = ccsl.split("=")[0];
-					leftStr = ccsl.split("=")[1].split("\\˄")[0];
+					leftStr = ccsl.split("=")[1].split(INFIMUM_REGEX)[0];
 					if(leftStr.contains(".")) {
 						leftState = leftStr.split("\\.")[1];
 						leftStr = leftStr.split("\\.")[0];
 					}
-					rightStr = ccsl.split("=")[1].split("\\˄")[1];
+					rightStr = ccsl.split("=")[1].split(INFIMUM_REGEX)[1];
 					if(rightStr.contains(".")) {
 						rightState = rightStr.split("\\.")[1];
 						rightStr = rightStr.split("\\.")[0];
 					}
-					expression = "˄";
-				} else if(ccsl.contains("˅")) {
+					expression = INFIMUM;
+				} else if(ccsl.contains(SUPREMUM)) {
 					equalLeft = ccsl.split("=")[0];
-					leftStr = ccsl.split("=")[1].split("\\˅")[0];
+					leftStr = ccsl.split("=")[1].split(SUPREMUM_REGEX)[0];
 					if(leftStr.contains(".")) {
 						leftState = leftStr.split("\\.")[1];
 						leftStr = leftStr.split("\\.")[0];
 					}
-					rightStr = ccsl.split("=")[1].split("\\˅")[1];
+					rightStr = ccsl.split("=")[1].split(SUPREMUM_REGEX)[1];
 					if(rightStr.contains(".")) {
 						rightState = rightStr.split("\\.")[1];
 						rightStr = rightStr.split("\\.")[0];
 					}
-					expression = "˅";
+					expression = SUPREMUM;
 				} 
 				boolean leftFlag = false, rightFlag = false;
 //				for(String comMessage: commonPhenomenon) {
+				// 在消息名称后添加 id 区分共有消息
+				// todo 这里暂时需要将 event -> instruction + signal，暂时将 signal 和 state 作为共有消息进行区分
 				if(commonPhenomenon.contains(leftStr)) {
 //					if(leftStr.equals(comMessage)) {
-					if(leftState != null) {
-						if(leftState.contains("_") && (!leftState.startsWith("s") && !leftState.startsWith("f"))) {
-							leftStr = leftState + id;
+					if ("signal".equals(nodePhenomenon.get(leftStr))
+							|| "state".equals(nodePhenomenon.get(leftStr))) {
+						if (leftState != null) {
+							if (leftState.contains("_") && (!leftState.startsWith("s") && !leftState.startsWith("f"))) {
+								leftStr = leftState + id;
+							} else {
+								leftStr += id + "." + leftState;
+							}
 						} else {
-							leftStr += id + "." + leftState;
+							leftStr += id;
 						}
-					} else {
-						leftStr += id; 
+						leftFlag = true;
 					}
-					leftFlag = true;
 				}
 				if(commonPhenomenon.contains(rightStr)) {
 //					if(rightStr.equals(comMessage)) {
-					if(rightState != null) {
-						if(rightState.contains("_") && (!rightState.startsWith("s") && !rightState.startsWith("f"))) {
-							rightStr = rightState + id;
+					if ("signal".equals(nodePhenomenon.get(rightStr))
+							|| "state".equals(nodePhenomenon.get(rightStr))) {
+						if (rightState != null) {
+							if (rightState.contains("_") && (!rightState.startsWith("s") && !rightState.startsWith("f"))) {
+								rightStr = rightState + id;
+							} else {
+								rightStr += id + "." + rightState;
+							}
 						} else {
-							rightStr += id + "." + rightState;
+							rightStr += id;
 						}
-					} else {
-						rightStr += id;
+						rightFlag = true;
 					}
-					rightFlag = true;
 				}
 //				}
 				String ccslTmp = null;
 				if(leftFlag && rightFlag) {	
-					if(expression.equals(STRICT_PRE) || expression.equals("~") || expression.equals("#")) {
+					if(expression.equals(STRICT_PRE) || expression.equals(ALTER_STR) || expression.equals(EXCLUSIVE)) {
 						ccslTmp = leftStr + expression + rightStr;
-					} else if(expression.equals(TO_CCSL_HYPHEN) || expression.equals("˄") || expression.equals("˅")) {
+					} else if(expression.equals(UNION_STR) || expression.equals(INFIMUM) || expression.equals(SUPREMUM)) {
 						ccslTmp = equalLeft + "=" + leftStr + expression + rightStr;
 					}
 					if(!ccslList.contains(ccslTmp)) {
@@ -1348,9 +1386,9 @@ public class ProjectService {
 							rightStr += "." + rightState;
 						}
 					} 
-					if(expression.equals(STRICT_PRE) || expression.equals("~") || expression.equals("#")) {
+					if(expression.equals(STRICT_PRE) || expression.equals(ALTER_STR) || expression.equals(EXCLUSIVE)) {
 						ccslTmp = leftStr + expression + rightStr;
-					} else if(expression.equals(TO_CCSL_HYPHEN) || expression.equals("˄") || expression.equals("˅")) {
+					} else if(expression.equals(UNION_STR) || expression.equals(INFIMUM) || expression.equals(SUPREMUM)) {
 						ccslTmp = equalLeft + "=" + leftStr + expression + rightStr;
 					}
 					if(!ccslList.contains(ccslTmp)) {
@@ -1364,9 +1402,9 @@ public class ProjectService {
 							leftStr += "." + leftState;
 						}
 					} 
-					if(expression.equals(STRICT_PRE) || expression.equals("~") || expression.equals("#")) {
+					if(expression.equals(STRICT_PRE) || expression.equals(ALTER_STR) || expression.equals(EXCLUSIVE)) {
 						ccslTmp = leftStr + expression + rightStr;
-					} else if(expression.equals(TO_CCSL_HYPHEN) || expression.equals("˄") || expression.equals("˅")) {
+					} else if(expression.equals(UNION_STR) || expression.equals(INFIMUM) || expression.equals(SUPREMUM)) {
 						ccslTmp = equalLeft + "=" + leftStr + expression + rightStr;
 					}
 					if(!ccslList.contains(ccslTmp)) {
@@ -1380,16 +1418,17 @@ public class ProjectService {
 			}
 		}
 		
-		// TODO 为共有消息添加union关系
+		// TODO 为共有消息添加union关系 ? 为什么有 todo
 		for(int i = 0; i < commonPhenomenon.size(); i++) {
 			String commonMsg = commonPhenomenon.get(i);
 			for(String excludeState: excludeStates) {
-				if(excludeState.contains(commonMsg)) {
-					ccslList.add(commonMsg + ".s=" + commonMsg + "1.s+" + commonMsg + "2.s");
-					ccslList.add(commonMsg + ".f=" + commonMsg + "1.f+" + commonMsg + "2.f");
+				// 在这里区分一下 instruction 和 signal，目前为 signal 或 state 添加 union 关系
+				if (excludeState.contains(commonMsg)) {
+					ccslList.add(commonMsg + ".s=" + commonMsg + "1.s" + UNION_STR + commonMsg + "2.s");
+					ccslList.add(commonMsg + ".f=" + commonMsg + "1.f" + UNION_STR + commonMsg + "2.f");
 					break;
-				} else {
-					ccslList.add(commonMsg + "=" + commonMsg + "1+" + commonMsg + "2");
+				} else if ("signal".equals(nodePhenomenon.get(commonMsg))) {
+					ccslList.add(commonMsg + "=" + commonMsg + "1" + UNION_STR + commonMsg + "2");
 					break;
 				}
 			}
@@ -1405,7 +1444,7 @@ public class ProjectService {
 		return ccsl;
 	}
 
-	// 时钟图的简化
+	// todo 检查 时钟图的简化
 	public CCSLSet CCSLSimplify(String userAdd, Project project) {
 		List<String> composedCCSLList = project.getComposedCcslSet().getCcslList();
 		List<String> ccslListTmp = copyList(composedCCSLList);
@@ -1442,20 +1481,20 @@ public class ProjectService {
 						if(!ccsl1.equals(ccsl2)) {
 							if(ccsl1.contains("_") && ccsl2.contains("_")) {
 								if(ccsl1.contains(forbidStrs[0] + "_11") && ccsl2.contains(forbidStrs[1] + "_12")){
-									exclude1 = forbidStrs[0] +"_11#" + forbidStrs[1] + "_12";
+									exclude1 = forbidStrs[0] +"_11" + EXCLUSIVE + forbidStrs[1] + "_12";
 //									break loop;
 								}
 								if(ccsl1.contains(forbidStrs[0] + "_12") && ccsl2.contains(forbidStrs[1] + "_11")) {
-									exclude2 = forbidStrs[0] +"_12#" + forbidStrs[1] + "_11";
+									exclude2 = forbidStrs[0] +"_12" + EXCLUSIVE + forbidStrs[1] + "_11";
 									break loop;
 								}
 							} else {
 								if(ccsl1.contains(forbidStrs[0] + "1") && ccsl2.contains(forbidStrs[1] + "2")){
-									exclude1 = forbidStrs[0] +"1#" + forbidStrs[1] + "2";
+									exclude1 = forbidStrs[0] +"1" + EXCLUSIVE + forbidStrs[1] + "2";
 //									break loop;
 								}
 								if(ccsl1.contains(forbidStrs[0] + "2") && ccsl2.contains(forbidStrs[1] + "1")) {
-									exclude2 = forbidStrs[0] +"2#" + forbidStrs[1] + "1";
+									exclude2 = forbidStrs[0] +"2" + EXCLUSIVE + forbidStrs[1] + "1";
 									break loop;
 								}
 							}
@@ -1469,8 +1508,8 @@ public class ProjectService {
 					ccslListTmp.add(exclude2);
 				}
 				// 4.2 删除一些不必要的Exclude关系
-				removeCCSLs.add(forbidStrs[0] +"1#" + forbidStrs[1] + "1");
-				removeCCSLs.add(forbidStrs[0] +"2#" + forbidStrs[1] + "2");
+				removeCCSLs.add(forbidStrs[0] +"1" + EXCLUSIVE + forbidStrs[1] + "1");
+				removeCCSLs.add(forbidStrs[0] +"2" + EXCLUSIVE + forbidStrs[1] + "2");
 				if(ontologyLength > 0) {
 					ontologyLength -= 2;
 				}
@@ -1501,7 +1540,7 @@ public class ProjectService {
 						}
 					}
 					
-					if(line.getLine_type().equals("Synchrony")) {
+					if(line.getLine_type().equals("SYNC")) {
 						removePhenomenon.add(nodeName);
 					}
 				}
@@ -1538,6 +1577,9 @@ public class ProjectService {
 		}
 		ccslListTmp.removeAll(removeCCSLs);
 		removeCCSLs.removeAll(removeCCSLs);
+
+		// 3.同一状态机不同关键事件子时钟之间添加 Exclude 关系
+
 		// 4.删除一些不必要的时钟，以及StrictPre和Exclude关系
 		for(int i = ontologyLength; i < ccslListTmp.size(); i++) {
 			String ccsl = ccslListTmp.get(i);
@@ -1570,7 +1612,8 @@ public class ProjectService {
 		DosService.executeCommand(addressPng, addressPng + "SimplifiedCG");
 		return simplifiedCCSLSet;
 	}
-	
+
+	// todo 检查 检查是否冗余
 	private String isRedundant(List<String> ccslList, String left, String right, int ontologyLength) {
 		String ccsl = left + STRICT_PRE + right;
 		String tempLeft = left, tempStr = "";
@@ -1607,10 +1650,12 @@ public class ProjectService {
 
 		return "";
 	}
-	
+
 	// 不一致场景的编排
+	// todo 检查不一致场景编排的算法
 	public CCSLSet CCSLOrchestrate(String userAdd, Project project) {
 		List<String> simplifiedCCSLList = project.getSimplifiedCcslSet().getCcslList();
+		List<String> theOrchestrateCcslList = new ArrayList<>();
 		List<String> ccslListTmp = copyList(simplifiedCCSLList);
 		Ontology ontology = project.getOntology();
 		List<String> forbidEvents = ontology.getForbidEvents();
@@ -1646,11 +1691,13 @@ public class ProjectService {
 							if(ccsl1.contains(forbidStrs[0] + "1") && ccsl2.contains(forbidStrs[1] + "2")){
 								// 1. 添加一个同步关系
 								ccslListTmp.add(forbidStrs[0] +"1=" + forbidStrs[1] + "2");
+								theOrchestrateCcslList.add(forbidStrs[0] +"1=" + forbidStrs[1] + "2");
 								// 2. 删除另一个exclude关系
-								ccslListTmp.remove(forbidStrs[0] +"2#" + forbidStrs[1] + "1");
+//								ccslListTmp.remove(forbidStrs[0] +"2" + EXCLUSIVE + forbidStrs[1] + "1");
 								// 3. 为子时钟之间添加先于关系
 								String testStr1 = forbidStrs[0] + "1<" + forbidStrs[0] + "2";
 								ccslListTmp.add(testStr1);
+								theOrchestrateCcslList.add(testStr1);
 								List<List<String>> ccslCycles = getCycles(ccslListTmp, "B", "E");
 //								如果存在环路则添加反向的先于关系
 								if(ccslCycles.size() > 3) {
@@ -1667,9 +1714,10 @@ public class ProjectService {
 									ccslListTmp.add(testStr2);
 								}
 								break loop;
+							// todo 检查互斥关系的处理
 							} else if(ccsl1.contains(forbidStrs[0] + "2") && ccsl2.contains(forbidStrs[1] + "1")) {
 								ccslListTmp.add(forbidStrs[0] +"2=" + forbidStrs[1] + "1");
-								ccslListTmp.remove(forbidStrs[0] +"1#" + forbidStrs[1] + "2");
+								ccslListTmp.remove(forbidStrs[0] +"1" + EXCLUSIVE + forbidStrs[1] + "2");
 								String testStr1 = forbidStrs[0] + "1<" + forbidStrs[0] + "2";
 								ccslListTmp.add(testStr1);
 								List<List<String>> ccslCycles = getCycles(ccslListTmp, "B", "E");
@@ -1694,13 +1742,27 @@ public class ProjectService {
 			}
 		}
 		CCSLSet orchestratedCCSLSet = new CCSLSet("OrchestratedCCSL", ccslListTmp, "B", "E");
-		// 生成.dot图
+		// 生成 OrchestratedCG.dot 图
 		String addressPng = userAdd + "/ClockGraphs/";
 		File file = new File(addressPng);
 		file.mkdirs();
 		writeDot(addressPng + "OrchestratedCG.dot", ccslListTmp);
 		DosService.executeCommand(addressPng, addressPng + "OrchestratedCG");
+		// 保存用于编排互斥不一致场景的 CCSL
+		Project.theOrchestrateCcslList = theOrchestrateCcslList;
 		return orchestratedCCSLSet;
+	}
+
+	public CCSLSet getTheOrchestrateCCSLSet(String userAdd, Project project) {
+		List<String> theOrchestrateCcslList = Project.theOrchestrateCcslList;
+		CCSLSet theOrchestrateCcslSet = new CCSLSet("InconsistentLocateCCSL", theOrchestrateCcslList, "", "");
+		String addressPng = userAdd + "/ClockGraphs/";
+		// 生成 TempOrchestrateCG.dot 图
+		File file = new File(addressPng);
+		file.mkdirs();
+		writeDot2(addressPng + "InconsistentLocateCG.dot", theOrchestrateCcslList, userAdd, project);
+		DosService.executeCommand(addressPng, addressPng + "InconsistentLocateCG");
+		return theOrchestrateCcslSet;
 	}
 	
     //不一致场景的可视化
@@ -1730,16 +1792,16 @@ public class ProjectService {
 				if(!leftStr.equals("B")) {
 					directedLineList.add(new DirectedLine(leftStr, rightStr));
 				}
-			} else if(ccsl.contains("=") && ccsl.contains(TO_CCSL_HYPHEN)) {
+			} else if(ccsl.contains("=") && ccsl.contains(UNION_STR)) {
 				String leftStr = ccsl.split("=")[0];
 				if(leftStr.equals("U")) {
 					String rigthStr = ccsl.split("=")[1];
-					String event1 = rigthStr.split(TO_CCSL_HYPHEN)[0];
-					String event2 = rigthStr.split(TO_CCSL_HYPHEN)[1];
+					String event1 = rigthStr.split(UNION_STR_REGEX)[0];
+					String event2 = rigthStr.split(UNION_STR_REGEX)[1];
 					directedLineList.add(new DirectedLine("B", event1));
 					directedLineList.add(new DirectedLine("B", event2));
 				}
-			} else if(ccsl.contains("=") && !ccsl.contains(TO_CCSL_HYPHEN)) {
+			} else if(ccsl.contains("=") && !ccsl.contains(UNION_STR)) {
 				String event1 = ccsl.split("=")[0];
 				String event2 = ccsl.split("=")[1];
 				directedLineList.add(new DirectedLine(event1, event2));
@@ -1880,9 +1942,9 @@ public class ProjectService {
 					right = "\"" + right + "\"";
 				}
 				fileContent = fileContent + left + " -> " + right + "\n";
-			} else if(ccsl.contains("~")) {
-				String left = ccsl.split("~")[0];
-				String right = ccsl.split("~")[1];
+			} else if(ccsl.contains(ALTER_STR)) {
+				String left = ccsl.split(ALTER_STR)[0];
+				String right = ccsl.split(ALTER_STR)[1];
 				if(left.contains(".") || left.contains("(") || left.contains("+")) {
 					left = "\"" + left + "\"";
 				}
@@ -1890,14 +1952,14 @@ public class ProjectService {
 					right = "\"" + right + "\"";
 				}
 				fileContent = fileContent + left + " -> " + right + "[\"style\"=\"dashed\"]\n";
-			} else if(ccsl.contains("#")) {
-				String left = ccsl.split("#")[0];
+			} else if(ccsl.contains(EXCLUSIVE)) {
+				String left = ccsl.split(EXCLUSIVE)[0];
 				// 这里不考虑合并关系，仅拆开等号右边的字符串 -- 是否正确？
 				String temp = left.split("=")[0];
 				if (!temp.equals(left)) {
 					left = left.split("=")[1];
 				}
-				String right = ccsl.split("#")[1];
+				String right = ccsl.split(EXCLUSIVE)[1];
 				if(left.contains(".") || left.contains("(") || left.contains("+")) {
 					left = "\"" + left + "\"";
 				}
@@ -1905,14 +1967,14 @@ public class ProjectService {
 					right = "\"" + right + "\"";
 				}
 				fileContent = fileContent + left + " -> " + right + "[\"color\"=\"red\",\"style\"=\"normal\",\"dir\"=\"both\",\"arrowtail\"=\"diamond\",\"arrowhead\"=\"diamond\"]\n";
-			} else if(ccsl.contains(TO_CCSL_HYPHEN)) {
+			} else if(ccsl.contains(UNION_STR)) {
 				String leftStr = ccsl.split("=")[0];
 				if(leftStr.contains(".") || leftStr.contains("(") || leftStr.contains("+")) {
 					leftStr = "\"" + leftStr + "\"";
 				}
 				String rightStr = ccsl.split("=")[1];
-				String unionStr1 = rightStr.split(TO_CCSL_HYPHEN)[0];
-				String unionStr2 = rightStr.split(TO_CCSL_HYPHEN)[1];
+				String unionStr1 = rightStr.split(UNION_STR_REGEX)[0];
+				String unionStr2 = rightStr.split(UNION_STR_REGEX)[1];
 				if(unionStr1.contains(".") || unionStr1.contains("(") || unionStr1.contains("+")) {
 					unionStr1 = "\"" + unionStr1 + "\"";
 				}
@@ -1921,9 +1983,9 @@ public class ProjectService {
 				}
 				fileContent = fileContent + unionStr1 + " -> " + leftStr + "[\"style\"=\"dashed\",\"color\"=\"green\"]\n";
 				fileContent = fileContent + unionStr2 + " -> " + leftStr + "[\"style\"=\"dashed\"\"color\"=\"green\"]\n";
-			} else if(ccsl.contains("⊆")) {
-				String left = ccsl.split("⊆")[0];
-				String right = ccsl.split("⊆")[1];
+			} else if(ccsl.contains(SUBCLOCK)) {
+				String left = ccsl.split(SUBCLOCK)[0];
+				String right = ccsl.split(SUBCLOCK)[1];
 				if(left.contains(".") || left.contains("(") || left.contains("+")) {
 					left = "\"" + left + "\"";
 				}
@@ -1931,7 +1993,7 @@ public class ProjectService {
 					right = "\"" + right + "\"";
 				}
 				fileContent = fileContent + left + " -> " + right + "[\"color\"=\"purple\",\"arrowhead\"=\"diamond\"]\n";
-			} else if(ccsl.contains("$")) {
+			} else if(ccsl.contains(DELAYFOR)) {
 				String leftStr = ccsl.split("=")[0];
 				String rightStr = ccsl.split("=")[1];
 				String tmpStr = rightStr.split("\\$")[0];
@@ -1943,14 +2005,14 @@ public class ProjectService {
 				}
 				fileContent = fileContent + tmpStr + "->" + leftStr + "[\"style\"=\"normal\",\"color\"=\"blue\"]\n";
 //				continue;
-			} else if(ccsl.contains("˄")) {
+			} else if(ccsl.contains(INFIMUM)) {
 				String leftStr = ccsl.split("=")[0];
 				if(leftStr.contains(".") || leftStr.contains("(") || leftStr.contains("+")) {
 					leftStr = "\"" + leftStr + "\"";
 				}
 				String rightStr = ccsl.split("=")[1];
-				String unionStr1 = rightStr.split("\\˄")[0];
-				String unionStr2 = rightStr.split("\\˄")[1];
+				String unionStr1 = rightStr.split(INFIMUM_REGEX)[0];
+				String unionStr2 = rightStr.split(INFIMUM_REGEX)[1];
 				if(unionStr1.contains(".") || unionStr1.contains("(") || unionStr1.contains("+")) {
 					unionStr1 = "\"" + unionStr1 + "\"";
 				}
@@ -1959,14 +2021,14 @@ public class ProjectService {
 				}
 				fileContent = fileContent + unionStr1 + " -> " + leftStr + "[\"style\"=\"normal\",\"color\"=\"orange\"]\n";
 				fileContent = fileContent + unionStr2 + " -> " + leftStr + "[\"style\"=\"normal\"\"color\"=\"orange\"]\n";
-			} else if(ccsl.contains("˅")) {
+			} else if(ccsl.contains(SUPREMUM)) {
 				String leftStr = ccsl.split("=")[0];
 				if(leftStr.contains(".") || leftStr.contains("(") || leftStr.contains("+")) {
 					leftStr = "\"" + leftStr + "\"";
 				}
 				String rightStr = ccsl.split("=")[1];
-				String unionStr1 = rightStr.split("\\˅")[0];
-				String unionStr2 = rightStr.split("\\˅")[1];
+				String unionStr1 = rightStr.split(SUPREMUM_REGEX)[0];
+				String unionStr2 = rightStr.split(SUPREMUM_REGEX)[1];
 				if(unionStr1.contains(".") || unionStr1.contains("(") || unionStr1.contains("+")) {
 					unionStr1 = "\"" + unionStr1 + "\"";
 				}
@@ -1975,7 +2037,7 @@ public class ProjectService {
 				}
 				fileContent = fileContent + unionStr1 + " -> " + leftStr + "[\"style\"=\"dashed\",\"color\"=\"orange\"]\n";
 				fileContent = fileContent + unionStr2 + " -> " + leftStr + "[\"style\"=\"dashed\"\"color\"=\"orange\"]\n";
-			} else if(ccsl.contains("=") && !ccsl.contains(TO_CCSL_HYPHEN)) {
+			} else if(ccsl.contains("=") && !ccsl.contains(UNION_STR)) {
 				String left = ccsl.split("=")[0];
 				String right = ccsl.split("=")[1];
 				if(left.contains(".") || left.contains("(") || left.contains("+")) {
@@ -1986,6 +2048,146 @@ public class ProjectService {
 				}
 				fileContent = fileContent + left + " -> " + right + "[\"style\"=\"normal\",\"color\"=\"green\",\"arrowhead\"=\"none\"]\n";
 			} 
+		}
+		fileContent = fileContent + "}";
+		fileService.writeFile(fileName, fileContent);
+	}
+
+	// 将 ccsl 转换为情景图
+	public void writeDot2(String fileName, List<String> ccslList, String userAdd, Project project) {
+		String fileContent = "digraph {\n";
+		// 2. 获得 phenomenonList 和 intNodeList，循环匹配 phenomenon_name，通过 phenomenon_no 和 intNodeList 内部循环 node_no 匹配到 node
+		List<Phenomenon> phenomenonList = getPhenomenonList(userAdd);
+		List<ScenarioGraph> scenarioGraphList = project.getScenarioGraphList();
+		String leftNodeName = "", rightNodeName = "";
+		for(String ccsl : ccslList) {
+			if(ccsl.contains(STRICT_PRE)) {
+				// todo strictPre 转换为 情景图
+				// 1. 取得 leftStr 和 rightStr
+				String left = ccsl.split(STRICT_PRE)[0];
+				String right = ccsl.split(STRICT_PRE)[1];
+				if(left.contains(".") || left.contains("(") || left.contains("+")) {
+					left = "\"" + left + "\"";
+				}
+				if(right.contains(".") || right.contains("(") || right.contains("+")) {
+					right = "\"" + right + "\"";
+				}
+				for (Phenomenon phenomenon : phenomenonList) {
+					// 2.1 left
+					if (phenomenon.getPhenomenon_name().equals(left.split("\\d")[0])) {
+						for(ScenarioGraph scenarioGraph: scenarioGraphList) {
+							List<Node> intNodeList = scenarioGraph.getIntNodeList();
+							boolean flag = false;
+							for (Node intNode : intNodeList) {
+								if (phenomenon.getPhenomenon_no() == intNode.getNode_no()) {
+									// 3. todo 检查 根据 node_type 和 约束类型 strictPre 生成 dot 语句
+									leftNodeName = "int" + intNode.getNode_no();
+									fileContent = fileContent + leftNodeName;
+									if ("BehInt".equals(intNode.getNode_type())) {
+										fileContent = fileContent + "[shape=Mrecord, style=filled, fillcolor=\"#C3D7EC\"]";
+									} else if ("ExpInt".equals(intNode.getNode_type())) {
+										fileContent = fileContent + "[shape=Mrecord, style=dashed, fillcolor=\"#FBE8A4\"]";
+									}
+									fileContent = fileContent + "\n";
+									flag = true;
+									break;
+								}
+							}
+							if (flag) {
+								break;
+							}
+						}
+					}
+					// 2.2 right
+					if (phenomenon.getPhenomenon_name().equals(right.split("\\d")[0])) {
+						for(ScenarioGraph scenarioGraph: scenarioGraphList) {
+							List<Node> intNodeList = scenarioGraph.getIntNodeList();
+							boolean flag = true;
+							for (Node intNode : intNodeList) {
+								if (phenomenon.getPhenomenon_no() == intNode.getNode_no()) {
+									// 3. todo 检查 根据 node_type 和 约束类型 strictPre 生成 dot 语句
+									rightNodeName = "int" + intNode.getNode_no();
+									fileContent = fileContent + rightNodeName;
+									if ("BehInt".equals(intNode.getNode_type())) {
+										fileContent = fileContent + "[shape=Mrecord, style=filled, fillcolor=\"#C3D7EC\"]";
+									} else if ("ExpInt".equals(intNode.getNode_type())) {
+										fileContent = fileContent + "[shape=Mrecord, style=dashed, fillcolor=\"#FBE8A4\"]";
+									}
+									fileContent = fileContent + "\n";
+									flag = true;
+									break;
+								}
+							}
+							if (flag) {
+								break;
+							}
+						}
+						fileContent = fileContent + leftNodeName + " -> " + rightNodeName + "[\"color\"=\"#0101F5\"]\n";
+					}
+				}
+			} else if(ccsl.contains("=")) {
+				String left = ccsl.split("=")[0];
+				String right = ccsl.split("=")[1];
+				if(left.contains(".") || left.contains("(") || left.contains("+")) {
+					left = "\"" + left + "\"";
+				}
+				if(right.contains(".") || right.contains("(") || right.contains("+")) {
+					right = "\"" + right + "\"";
+				}
+				for (Phenomenon phenomenon : phenomenonList) {
+					// 2.1 left
+					if (phenomenon.getPhenomenon_name().equals(left.split("\\d")[0])) {
+						for(ScenarioGraph scenarioGraph: scenarioGraphList) {
+							List<Node> intNodeList = scenarioGraph.getIntNodeList();
+							boolean flag = false;
+							for (Node intNode : intNodeList) {
+								if (phenomenon.getPhenomenon_no() == intNode.getNode_no()) {
+									// 3. todo 检查 根据 node_type 和 约束类型 exclude 生成 dot 语句
+									leftNodeName = "int" + intNode.getNode_no();
+									fileContent = fileContent + leftNodeName;
+									if ("BehInt".equals(intNode.getNode_type())) {
+										fileContent = fileContent + "[shape=Mrecord, style=filled, fillcolor=\"#C3D7EC\"]";
+									} else if ("ExpInt".equals(intNode.getNode_type())) {
+										fileContent = fileContent + "[shape=Mrecord, style=dashed, fillcolor=\"#FBE8A4\"]";
+									}
+									fileContent = fileContent + "\n";
+									flag = true;
+									break;
+								}
+							}
+							if (flag) {
+								break;
+							}
+						}
+					}
+					// 2.2 right
+					if (phenomenon.getPhenomenon_name().equals(right.split("\\d")[0])) {
+						for(ScenarioGraph scenarioGraph: scenarioGraphList) {
+							List<Node> intNodeList = scenarioGraph.getIntNodeList();
+							boolean flag = false;
+							for (Node intNode : intNodeList) {
+								if (phenomenon.getPhenomenon_no() == intNode.getNode_no()) {
+									// 3. todo 检查 根据 node_type 和 约束类型 exclude 生成 dot 语句
+									rightNodeName = "int" + intNode.getNode_no();
+									fileContent = fileContent + rightNodeName;
+									if ("BehInt".equals(intNode.getNode_type())) {
+										fileContent = fileContent + "[shape=Mrecord, style=filled, fillcolor=\"#C3D7EC\"]";
+									} else if ("ExpInt".equals(intNode.getNode_type())) {
+										fileContent = fileContent + "[shape=Mrecord, style=dashed, fillcolor=\"#FBE8A4\"]";
+									}
+									fileContent = fileContent + "\n";
+									flag = true;
+									break;
+								}
+							}
+							if (flag) {
+								break;
+							}
+						}
+						fileContent = fileContent + leftNodeName + " -> " + rightNodeName + "[\"style\"=\"normal\",\"color\"=\"green\",\"arrowhead\"=\"none\"]\n";
+					}
+				}
+			}
 		}
 		fileContent = fileContent + "}";
 		fileService.writeFile(fileName, fileContent);

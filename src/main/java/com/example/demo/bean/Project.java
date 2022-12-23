@@ -45,4 +45,12 @@ public class Project {
 	 * 编排的情景图对应的CCSL约束
 	 */
 	private CCSLSet orchestrateCcslSet;
+	/**
+	 * 用于互斥不一致场景编排的CCSL约束 Set
+	 */
+	private CCSLSet inconsistentLocateCcslSet;
+	/**
+	 * 用于互斥不一致场景编排的CCSL约束 List
+	 */
+	public static List<String> theOrchestrateCcslList;
 }

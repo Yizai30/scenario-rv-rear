@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 
 import com.example.demo.util.GitUtil;
+import lombok.extern.slf4j.Slf4j;
 import org.dom4j.Document;
 import org.dom4j.DocumentException;
 import org.dom4j.DocumentHelper;
@@ -49,7 +50,10 @@ import com.example.demo.bean.RequirementPhenomenon;
 import com.example.demo.bean.ScenarioGraph;
 import com.example.demo.bean.VersionInfo;
 
+import static com.example.demo.util.ScenarioRVConstants.*;
+
 @Service
+@Slf4j
 public class FileService {
 	// ==================查找项目（owl）及版本====================
 	public List<String> searchProject(String userAdd) {
@@ -208,7 +212,7 @@ public class FileService {
 			if(events.length == 2) {
 				String event1 = events[0];
 				String event2 = events[1];
-				ccslList.add(event1 + "#" + event2);
+				ccslList.add(event1 + EXCLUSIVE + event2);
 			}
 		}
 		// 将互斥状态对转换成CCSL约束
@@ -224,13 +228,13 @@ public class FileService {
 				String state2F = state2 + ".f";
 				String stateS = "State" + stateNum + ".s";
 				String stateF = "State" + stateNum + ".f";
-				ccslList.add(stateS + "=" + state1S + "+" + state2S);
-				ccslList.add(stateF + "=" + state1F + "+" + state2F);
-				ccslList.add(state1S + "#" + state1F);
-				ccslList.add(state2S + "#" + state2F);
-				ccslList.add(stateS + "~" + stateF);
-				ccslList.add(state1S + "~" + state1F);
-				ccslList.add(state2S + "~"+ state2F);
+				ccslList.add(stateS + "=" + state1S + UNION_STR + state2S);
+				ccslList.add(stateF + "=" + state1F + UNION_STR + state2F);
+				ccslList.add(state1S + EXCLUSIVE + state1F);
+				ccslList.add(state2S + EXCLUSIVE + state2F);
+				ccslList.add(stateS + ALTER_STR + stateF);
+				ccslList.add(state1S + ALTER_STR + state1F);
+				ccslList.add(state2S + ALTER_STR + state2F);
 				stateNum++;
 			}
 		}
@@ -246,7 +250,8 @@ public class FileService {
 		try {
 			File xmlFile = new File(userAdd + "Project.xml");
 			Document document = saxReader.read(xmlFile);
-			
+
+			// Element 用来构建 xml 文件节点
 			Element projectElement = document.getRootElement();
 			Element titleElement = projectElement.element("title");
 			Element fileListElement = projectElement.element("fileList");
@@ -260,10 +265,14 @@ public class FileService {
 			ContextDiagram contextDiagram = getContextDiagram(userAdd, contextDiagramName);
 			ProblemDiagram problemDiagram = getProblemDiagram(userAdd, problemDiagramName);
 
+			// 项目 title
 			project.setTitle(title);
+			// todo (think) 上下文图 如何添加约束
 			project.setContextDiagram(contextDiagram);
+			// todo (think) 问题图 如何添加约束
 			project.setProblemDiagram(problemDiagram);
-			
+
+			// 初始化 情景图
 			if(senarioGraphListElement != null) {
 				List<?> senarioGraphElementList = senarioGraphListElement.elements("SenarioGraph");
 				List<ScenarioGraph> scenarioGraphList = getScenarioGraphList(userAdd, senarioGraphElementList, "haveRequirement");
@@ -276,7 +285,7 @@ public class FileService {
 		} catch (DocumentException e) {
 			e.printStackTrace();
 		}
-
+		log.debug("project: ", project);
 		return project;
 	}
 	
@@ -331,6 +340,7 @@ public class FileService {
 
 			e.printStackTrace();
 		}
+		log.info("contextDiagram: ", contextDiagram);
 		return contextDiagram;
 	}
 
@@ -370,7 +380,8 @@ public class FileService {
 		}
 		return problemDiagram;
 	}
-	
+
+	// 解析 情景图 其中包含有需求
 	private List<ScenarioGraph> getScenarioGraphList(String address, List<?> senarioGraphElementList, String requirementFlag) {
 		List<ScenarioGraph> scenarioGraphList = new ArrayList<ScenarioGraph> ();
 		for(Object sge : senarioGraphElementList) {
@@ -554,7 +565,7 @@ public class FileService {
 
 			interfaceList.add(inte);
 		}
-
+//		log.info(interfaceList);
 		return interfaceList;
 	}
 	
@@ -581,6 +592,7 @@ public class FileService {
 
 			phenomenonList.add(phenomenon);
 		}
+//		log.info(phenomenonList);
 		return phenomenonList;
 	}
 
@@ -1083,6 +1095,14 @@ public class FileService {
 			CCSLConstraintsElement.addText(orchestratedCCSLSet.getId());
 			saveCCSLConstraints(userAdd, orchestratedCCSLSet);
 		}
+
+		CCSLSet inconsistentLocateCCSLSet = project.getInconsistentLocateCcslSet();
+		if(inconsistentLocateCCSLSet != null && inconsistentLocateCCSLSet.getId() != null) {
+			Element CCSLConstraintsListElement = fileListElement.addElement("InconsistentLocateCcslSet");
+			Element CCSLConstraintsElement = CCSLConstraintsListElement.addElement("CCSLSet");
+			CCSLConstraintsElement.addText(inconsistentLocateCCSLSet.getId());
+			saveCCSLConstraints(userAdd, inconsistentLocateCCSLSet);
+		}
 		
 		StringWriter strWtr = new StringWriter();
 		File xmlFile = new File(userAdd + "Project.xml");
@@ -1406,6 +1426,7 @@ public class FileService {
 				Element ComposedCcslSetElement = fileListElement.element("ComposedCcslSet");
 				Element SimplifiedCCSLSetElement = fileListElement.element("SimplifiedCcslSet");
 				Element OrchestratedCCSLSetElement = fileListElement.element("OrchestratedCcslSet");
+				Element InconsistentLocateCCSLSetElement = fileListElement.element("InconsistentLocateCcslSet");
 				
 				String title = titleElement.getText();			
 				project.setTitle(title);
@@ -1461,6 +1482,18 @@ public class FileService {
 					CCSLSet ccslSet = new CCSLSet();
 					project.setOrchestrateCcslSet(ccslSet);
 				}
+
+				if(InconsistentLocateCCSLSetElement != null) {
+					Element inconsistentLocateCCSLSetElement = InconsistentLocateCCSLSetElement.element("CCSLSet");
+					Object ccslSet = (Object)inconsistentLocateCCSLSetElement;
+					CCSLSet CcslSet = new CCSLSet();
+					CcslSet = getCCSLSetList(userAdd, ccslSet);
+					project.setInconsistentLocateCcslSet(CcslSet);
+				} else {
+					CCSLSet ccslSet = new CCSLSet();
+					project.setInconsistentLocateCcslSet(ccslSet);
+				}
+
 			} else {
 				System.out.println("project.xml does not exist.");
 				project.setTitle(branch);

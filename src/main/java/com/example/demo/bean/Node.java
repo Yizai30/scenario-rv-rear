@@ -26,5 +26,4 @@ public class Node {
 	private List<Node> node_toList;
 	private Phenomenon pre_condition;
 	private Phenomenon post_condition;
-	
 }
